@@ -1,9 +1,66 @@
-import type { NextPage } from 'next';
+import { parse } from 'cookie';
+import type { NextPage, NextPageContext } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
+import SpotifyUserApi from '../../apis/SpotifyUserApi';
+import { CookieKey } from '../../constants/CookieKey';
+import { spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 import styles from '../../styles/Home.module.css';
+import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 
-const Home: NextPage = () => {
+export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
+    try {
+        const cookieHeader = context.req?.headers.cookie;
+
+        if (!cookieHeader) {
+            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
+            // TODO: redirect to authorize
+
+            return {
+                props: {
+                    error: 'not_logged_in',
+                },
+            };
+        }
+
+        const cookieMap = parse(cookieHeader, { decode: (s) => decodeURIComponent(s) });
+        const sessionId = cookieMap[CookieKey.SESSION_ID_COOKIE_KEY].trim();
+        const authorization = spotifyAuthorizationStore.get(sessionId);
+
+        if (!authorization) {
+            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
+
+            return {
+                props: {
+                    error: 'not_logged_in',
+                },
+            };
+        }
+
+        const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
+        const currentProfile = await spotifyUserApi.getCurrentUserProfile();
+
+        return {
+            props: {
+                spotifyUserId: currentProfile.id,
+            }, // will be passed to the page component as props
+        };
+    } catch (err) {
+        return {
+            props: {
+                error: 'internal',
+            }, // will be passed to the page component as props
+        };
+    }
+}
+
+const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
+    if (isErrorProps(props)) {
+        return <pre>
+            {props.error}
+        </pre>;
+    }
+
     return (
         <div className={styles.container}>
             <Head>
@@ -33,3 +90,7 @@ const Home: NextPage = () => {
 };
 
 export default Home;
+
+type SpotifyPlaylistCloneProps = ErrorProps | {
+    spotifyUserId: string;
+}

@@ -1,16 +1,36 @@
-import type { NextPage } from 'next';
+import type { NextPage, NextPageContext } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
 import styles from '../../../styles/Home.module.css';
+import { ErrorProps, isErrorProps } from '../../../types/ErrorProps';
 
-const clientId = '5bec90e6dcf84c9491493e025a08a9ed';
-const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public'].join(' ');
-const host = 'https://accounts.spotify.com';
-const redirectUri = 'http://127.0.0.1:3000/api/oauth2/spotify/callback';
 
-const authorizeUrl = `${host}/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+export async function getStaticProps(_context: NextPageContext): Promise<{ props: HomePageProps }> {
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public'].join(' ');
+    const host = 'https://accounts.spotify.com';
+    const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
-const Home: NextPage = () => {
+    if (!redirectUri) {
+        throw new Error('invalid_config');
+    }
+
+    const authorizeUrl = `${host}/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    return {
+        props: {
+            authorizeUrl,
+        },
+    };
+}
+
+const Home: NextPage<HomePageProps> = (props: HomePageProps) => {
+    if (isErrorProps(props)) {
+        return <pre>
+            {props.error}
+        </pre>;
+    }
+
     return (
         <div className={styles.container}>
             <Head>
@@ -19,7 +39,7 @@ const Home: NextPage = () => {
             </Head>
 
             <main className={styles.main}>
-                <a href={authorizeUrl}>
+                <a href={props.authorizeUrl}>
                     Authorize spotify
                 </a>
             </main>
@@ -39,5 +59,9 @@ const Home: NextPage = () => {
         </div>
     );
 };
+
+type HomePageProps = {
+    authorizeUrl: string,
+} | ErrorProps;
 
 export default Home;
