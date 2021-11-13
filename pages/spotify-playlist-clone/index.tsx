@@ -1,8 +1,7 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
-import Link from 'next/link';
-import styles from '../styles/Home.module.css';
+import styles from '../../styles/Home.module.css';
 
 const Home: NextPage = () => {
     return (
@@ -14,9 +13,7 @@ const Home: NextPage = () => {
             </Head>
 
             <main className={styles.main}>
-                <Link href="/spotify-playlist-clone/oauth2/authorize">
-                    Spotify playlist clone
-                </Link>
+                Hello
             </main>
 
             <footer className={styles.footer}>
