@@ -1,34 +1,90 @@
-import type { NextPage, NextPageContext } from 'next';
+import { parse } from 'cookie';
+import type { NextPage, NextPageContext, GetServerSidePropsResult } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
+import SpotifyUserApi from '../../../apis/SpotifyUserApi';
+import { CookieKey } from '../../../constants/CookieKey';
+import { spotifyAuthorizationStore } from '../../../stores/SpotifyAuthorizationStore';
 import styles from '../../../styles/Home.module.css';
-import { ErrorProps, isErrorProps } from '../../../types/ErrorProps';
 
+export async function getServerSideProps(context: NextPageContext): Promise<GetServerSidePropsResult<HomePageProps>> {
+    try {
+        // setup authorize url from config
+        const clientId = process.env.SPOTIFY_CLIENT_ID;
+        const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public'].join(' ');
+        const host = 'https://accounts.spotify.com';
+        const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
-export async function getStaticProps(_context: NextPageContext): Promise<{ props: HomePageProps }> {
-    const clientId = process.env.SPOTIFY_CLIENT_ID;
-    const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public'].join(' ');
-    const host = 'https://accounts.spotify.com';
-    const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
+        if (!redirectUri) {
+            throw new Error('invalid_config');
+        }
 
-    if (!redirectUri) {
-        throw new Error('invalid_config');
+        const authorizeUrl = `${host}/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+        // fetch user
+        const cookieHeader = context.req?.headers.cookie;
+
+        if (!cookieHeader) {
+            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
+            // TODO: redirect to authorize
+
+            return {
+                props: {
+                    authorizeUrl: authorizeUrl,
+                    spotifyUserId: null,
+                    error: 'not_logged_in',
+                },
+            };
+        }
+
+        const cookieMap = parse(cookieHeader, { decode: (s) => decodeURIComponent(s) });
+        const sessionId = cookieMap[CookieKey.SESSION_ID_COOKIE_KEY].trim();
+        const authorization = await spotifyAuthorizationStore.get(sessionId);
+
+        if (!authorization) {
+            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
+
+            return {
+                props: {
+                    authorizeUrl: authorizeUrl,
+                    spotifyUserId: null,
+                    error: 'not_logged_in',
+                },
+            };
+        }
+
+        // return userId
+        const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
+        const currentProfile = await spotifyUserApi.getCurrentUserProfile();
+
+        return {
+            props: {
+                authorizeUrl: authorizeUrl,
+                spotifyUserId: currentProfile.id,
+            },
+        };
+    } catch (err) {
+        return {
+            props: {
+                authorizeUrl: '',
+                spotifyUserId: null,
+                error: 'internal',
+            }, // will be passed to the page component as props
+        };
     }
-
-    const authorizeUrl = `${host}/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-    return {
-        props: {
-            authorizeUrl,
-        },
-    };
 }
 
 const Home: NextPage<HomePageProps> = (props: HomePageProps) => {
-    if (isErrorProps(props)) {
-        return <pre>
-            {props.error}
-        </pre>;
+    if (props.error) {
+        return (
+            <pre>
+                internal
+            </pre>
+        );
+    }
+
+    if (typeof window !== 'undefined' && props.spotifyUserId !== null) {
+        window.location.href = '/spotify-playlist-clone';
     }
 
     return (
@@ -61,7 +117,9 @@ const Home: NextPage<HomePageProps> = (props: HomePageProps) => {
 };
 
 type HomePageProps = {
+    spotifyUserId: string | null,
     authorizeUrl: string,
-} | ErrorProps;
+    error?: string,
+};
 
 export default Home;

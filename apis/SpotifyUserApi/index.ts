@@ -27,6 +27,7 @@ export default class SpotifyUserApi {
         return response.data;
     }
 
+    // TODO: pagination all
     async getUserPlaylists(userId: string): Promise<GetPlaylistsResponse> {
         const apiUrl = `https://api.spotify.com/v1/users/${userId}/playlists`;
 
