@@ -47,7 +47,7 @@ export default async function handler(
         } = tokenResponseData;
         const sessionId = req.cookies[CookieKey.SESSION_ID_COOKIE_KEY] ?? nanoid();
 
-        spotifyAuthorizationStore.set(sessionId, {
+        await spotifyAuthorizationStore.set(sessionId, {
             accessToken,
             refreshToken,
             tokenType,

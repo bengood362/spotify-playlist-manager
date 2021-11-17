@@ -1,3 +1,4 @@
+import Redis from 'ioredis';
 import { GetTokenResponse } from '../apis/SpotifyAuthApi';
 
 type SpotifyAuthorization = {
@@ -13,20 +14,54 @@ type SpotifyAuthorization = {
     issuedAt: number
 }
 
+type SpotifyAuthorizationDto = Omit<SpotifyAuthorization, 'issuedAt' | 'expiresIn'> & {
+    issuedAt: string,
+    expiresIn: string,
+}
+
+function isSpotifyAuthorizationDto(r: Record<string, any>): r is SpotifyAuthorizationDto {
+    return (
+        typeof r['accessToken'] === 'string' &&
+        typeof r['tokenType'] === 'string' &&
+        typeof r['refreshToken'] === 'string' &&
+        typeof r['expiresIn'] === 'string' && !isNaN(parseInt(r['expiresIn'])) &&
+        typeof r['scope'] === 'string' &&
+        typeof r['issuedAt'] === 'string' && !isNaN(parseInt(r['issuedAt']))
+    );
+}
+
+function toSpotifyAuthorization(sad: SpotifyAuthorizationDto): SpotifyAuthorization {
+    return {
+        ...sad,
+        expiresIn: parseInt(sad.expiresIn),
+        issuedAt: parseInt(sad.issuedAt),
+    };
+}
+
 class SpotifyAuthorizationStore {
+    private redisClient: Redis.Redis;
+    private prefix: string;
     public authorizationMap: Record<string, SpotifyAuthorization> = {};
 
-    set(key: string, authorization: SpotifyAuthorization): void {
-        console.log('key added', key);
+    constructor() {
+        const { REDIS_URL, REDIS_PORT, REDIS_PASSWORD, REDIS_SECURE } = process.env;
 
-        this.authorizationMap = {
-            ...this.authorizationMap,
-            [key]: authorization,
-        };
+        this.redisClient = new Redis(`redis${REDIS_SECURE === 't' ? 's' : ''}://:${REDIS_PASSWORD}@${REDIS_URL}:${REDIS_PORT}`, { maxRetriesPerRequest: 3 });
+        this.prefix = 'spotify-copy-sess:';
     }
 
-    get(key: string): SpotifyAuthorization | null {
-        return this.authorizationMap[key] ?? null;
+    private getRedisKey(key: string): string {
+        return `${this.prefix}:${key}`;
+    }
+
+    async set(key: string, authorization: SpotifyAuthorization): Promise<void> {
+        await this.redisClient.hset(this.getRedisKey(key), authorization);
+    }
+
+    async get(key: string): Promise<SpotifyAuthorization | null> {
+        const result = await this.redisClient.hgetall(this.getRedisKey(key));
+
+        return isSpotifyAuthorizationDto(result) ? toSpotifyAuthorization(result) : null;
     }
 }
 

@@ -25,7 +25,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 
         const cookieMap = parse(cookieHeader, { decode: (s) => decodeURIComponent(s) });
         const sessionId = cookieMap[CookieKey.SESSION_ID_COOKIE_KEY].trim();
-        const authorization = spotifyAuthorizationStore.get(sessionId);
+        const authorization = await spotifyAuthorizationStore.get(sessionId);
 
         if (!authorization) {
             console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
