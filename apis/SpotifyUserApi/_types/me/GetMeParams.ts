@@ -1,0 +1,1 @@
+export type GetMeParams = Record<string, never>

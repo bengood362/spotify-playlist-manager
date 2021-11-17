@@ -1,0 +1,1 @@
+export type GetPlaylistsParams = Record<string, never>

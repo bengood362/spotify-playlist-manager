@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { GetTokenResponse } from '../apis/SpotifyAuthApi';
+import { GetTokenResponse } from '../apis/SpotifyAuthApi/_types/token/GetTokenResponse';
 
 type SpotifyAuthorization = {
     accessToken: GetTokenResponse['access_token'],
