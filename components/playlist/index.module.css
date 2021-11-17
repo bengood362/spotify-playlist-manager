@@ -1,0 +1,16 @@
+.row {
+    display: inline-block;
+    width: 100%;
+    background-color: lightgray;
+    border-left: black 1px solid;
+    border-right: black 1px solid;
+    border-top: black 1px solid;
+}
+
+.row:last-child {
+    border-bottom: black 1px solid;
+}
+
+.table {
+    width: 280px;
+}

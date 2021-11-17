@@ -3,10 +3,13 @@ import type { NextPage, NextPageContext } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
 import SpotifyUserApi from '../../apis/SpotifyUserApi';
+import { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
 import { CookieKey } from '../../constants/CookieKey';
 import { spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 import styles from '../../styles/Home.module.css';
 import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
+import { PlaylistRow } from '../../components/playlist/PlaylistRow';
+import { PlaylistTable } from '../../components/playlist/PlaylistTable';
 
 export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
     try {
@@ -39,10 +42,12 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 
         const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
         const currentProfile = await spotifyUserApi.getCurrentUserProfile();
+        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id);
 
         return {
             props: {
                 spotifyUserId: currentProfile.id,
+                playlists: getPlaylistsResponse.items.filter((playlist) => playlist.owner.id === currentProfile.id),
             }, // will be passed to the page component as props
         };
     } catch (err) {
@@ -61,6 +66,15 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         </pre>;
     }
 
+    const playlistRows = props.playlists.map((playlist) => {
+        return (
+            <PlaylistRow
+                key={`${playlist.type}-${playlist.id}`}
+                playlist={playlist}
+            />
+        );
+    });
+
     return (
         <div className={styles.container}>
             <Head>
@@ -70,8 +84,13 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             </Head>
 
             <main className={styles.main}>
-                Hello
+                Hello {props.spotifyUserId}
+
+                <PlaylistTable>
+                    {playlistRows}
+                </PlaylistTable>
             </main>
+
 
             <footer className={styles.footer}>
                 <a
@@ -93,4 +112,5 @@ export default Home;
 
 type SpotifyPlaylistCloneProps = ErrorProps | {
     spotifyUserId: string;
+    playlists: Playlist[];
 }
