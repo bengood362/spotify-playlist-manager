@@ -42,7 +42,8 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 
         const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
         const currentProfile = await spotifyUserApi.getCurrentUserProfile();
-        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id);
+        // TODO: pagination all
+        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id, 50);
 
         return {
             props: {

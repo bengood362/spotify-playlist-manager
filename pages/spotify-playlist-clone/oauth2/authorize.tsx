@@ -38,7 +38,21 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
         }
 
         const cookieMap = parse(cookieHeader, { decode: (s) => decodeURIComponent(s) });
-        const sessionId = cookieMap[CookieKey.SESSION_ID_COOKIE_KEY].trim();
+        const cookie = cookieMap[CookieKey.SESSION_ID_COOKIE_KEY];
+
+        if (!cookie) {
+            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
+
+            return {
+                props: {
+                    authorizeUrl: authorizeUrl,
+                    spotifyUserId: null,
+                    error: 'not_logged_in',
+                },
+            };
+        }
+
+        const sessionId = cookie.trim();
         const authorization = await spotifyAuthorizationStore.get(sessionId);
 
         if (!authorization) {
@@ -64,6 +78,8 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
             },
         };
     } catch (err) {
+        console.log('[E]authorize', err);
+
         return {
             props: {
                 authorizeUrl: '',
@@ -75,14 +91,6 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
 }
 
 const Home: NextPage<HomePageProps> = (props: HomePageProps) => {
-    if (props.error) {
-        return (
-            <pre>
-                internal
-            </pre>
-        );
-    }
-
     if (typeof window !== 'undefined' && props.spotifyUserId !== null) {
         window.location.href = '/spotify-playlist-clone';
     }
@@ -98,6 +106,13 @@ const Home: NextPage<HomePageProps> = (props: HomePageProps) => {
                 <a href={props.authorizeUrl}>
                     Authorize spotify
                 </a>
+
+                {props.error ? (
+                    <p>
+                        {props.error}
+                    </p>
+                ) : null}
+
             </main>
 
             <footer className={styles.footer}>

@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
+import qs from 'qs';
 import { GetMeParams } from './_types/me/GetMeParams';
 import { GetMeResponse } from './_types/me/GetMeResponse';
 import { GetPlaylistsParams } from './_types/playlists/GetPlaylistsParams';
@@ -27,9 +28,12 @@ export default class SpotifyUserApi {
         return response.data;
     }
 
-    // TODO: pagination all
-    async getUserPlaylists(userId: string): Promise<GetPlaylistsResponse> {
-        const apiUrl = `https://api.spotify.com/v1/users/${userId}/playlists`;
+    async getUserPlaylists(userId: string, limit: number, offset = 0): Promise<GetPlaylistsResponse> {
+        const queryString = qs.stringify({
+            limit,
+            offset,
+        });
+        const apiUrl = `https://api.spotify.com/v1/users/${userId}/playlists?${queryString}`;
 
         const response = await axios.get<GetPlaylistsParams, AxiosResponse<GetPlaylistsResponse>>(apiUrl, {
             headers: {
