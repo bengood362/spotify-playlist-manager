@@ -8,7 +8,6 @@ import { CookieKey } from '../../constants/CookieKey';
 import { spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 import styles from '../../styles/Home.module.css';
 import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
-import { PlaylistRow } from '../../components/playlist/PlaylistRow';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
 
 export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
@@ -67,15 +66,6 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         </pre>;
     }
 
-    const playlistRows = props.playlists.map((playlist) => {
-        return (
-            <PlaylistRow
-                key={`${playlist.type}-${playlist.id}`}
-                playlist={playlist}
-            />
-        );
-    });
-
     return (
         <div className={styles.container}>
             <Head>
@@ -85,11 +75,10 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             </Head>
 
             <main className={styles.main}>
-                Hello {props.spotifyUserId}
-
-                <PlaylistTable>
-                    {playlistRows}
-                </PlaylistTable>
+                <h3>
+                    Hello {props.spotifyUserId}
+                </h3>
+                <PlaylistTable playlists={props.playlists} />
             </main>
 
 
