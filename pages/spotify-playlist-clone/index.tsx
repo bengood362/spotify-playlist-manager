@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { parse } from 'cookie';
 import type { NextPage, NextPageContext } from 'next';
 import Head from 'next/head';
@@ -60,11 +61,11 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 }
 
 const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
-    if (isErrorProps(props)) {
-        return <pre>
-            {props.error}
-        </pre>;
-    }
+    const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+
+    const handlePlaylistRowClick = (playlist: Playlist) => {
+        setSelectedPlaylist(playlist);
+    };
 
     return (
         <div className={styles.container}>
@@ -75,12 +76,19 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             </Head>
 
             <main className={styles.main}>
-                <h3>
-                    Hello {props.spotifyUserId}
-                </h3>
-                <PlaylistTable playlists={props.playlists} />
+                {isErrorProps(props) ? (
+                    <p>
+                        {props.error}
+                    </p>
+                ) : (
+                    <React.Fragment>
+                        <h3>
+                            Hello {props.spotifyUserId}
+                        </h3>
+                        <PlaylistTable selectedPlaylist={selectedPlaylist} onPlaylistRowClick={handlePlaylistRowClick} playlists={props.playlists} />
+                    </React.Fragment>
+                )}
             </main>
-
 
             <footer className={styles.footer}>
                 <a

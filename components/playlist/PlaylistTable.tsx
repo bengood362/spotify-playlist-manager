@@ -3,10 +3,14 @@ import { PlaylistRow } from './PlaylistRow';
 import { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
 
 export const PlaylistTable = (props: PlaylistTableProps) => {
+    const { selectedPlaylist } = props;
+
     const playlistRows = props.playlists.map((playlist) => {
         return (
             <PlaylistRow
+                selected={selectedPlaylist ? selectedPlaylist.id === playlist.id : false}
                 key={`${playlist.type}-${playlist.id}`}
+                onClick={() => props.onPlaylistRowClick(playlist)}
                 playlist={playlist}
             />
         );
@@ -24,5 +28,7 @@ export const PlaylistTable = (props: PlaylistTableProps) => {
 };
 
 type PlaylistTableProps = {
-    playlists: Playlist[]
+    playlists: Playlist[],
+    selectedPlaylist: Playlist | null,
+    onPlaylistRowClick: (playlist: Playlist) => void,
 };
