@@ -12,7 +12,7 @@ export default class SpotifyUserApi {
     constructor(private readonly tokenType: string, private readonly token: string) {}
 
     // https://developer.spotify.com/documentation/web-api/reference/#/operations/get-current-users-profile
-    async getCurrentUserProfile(): Promise<GetMeResponse> {
+    readonly getCurrentUserProfile = async (): Promise<GetMeResponse> => {
         const apiUrl = 'https://api.spotify.com/v1/me';
 
         const response = await axios.get<GetMeParams, AxiosResponse<GetMeResponse>>(apiUrl, {
@@ -30,7 +30,7 @@ export default class SpotifyUserApi {
         return response.data;
     }
 
-    async getUserPlaylists(userId: string, limit: number, offset = 0): Promise<GetPlaylistsResponse> {
+    readonly getUserPlaylists = async (userId: string, limit: number, offset = 0): Promise<GetPlaylistsResponse> => {
         const queryString = qs.stringify({
             limit,
             offset,
@@ -52,7 +52,7 @@ export default class SpotifyUserApi {
         return response.data;
     }
 
-    async getPlaylistItems(playlistId: string, offset = 0): Promise<GetPlaylistTracksResponse> {
+    readonly getPlaylistItems = async (playlistId: string, offset = 0): Promise<GetPlaylistTracksResponse> => {
         const params: Partial<GetPlaylistTracksParams> = {
             additional_types: 'track',
             limit: 50,

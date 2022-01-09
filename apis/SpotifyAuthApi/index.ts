@@ -15,7 +15,7 @@ export default class SpotifyAuthApi {
         this.authorization = authorization;
     }
 
-    async getTokenByAuthCode(authCode: string): Promise<GetTokenResponse> {
+    readonly getTokenByAuthCode = async (authCode: string): Promise<GetTokenResponse> => {
         const apiUrl = `${this.apiHost}/api/token`;
         const params = new URLSearchParams();
 
