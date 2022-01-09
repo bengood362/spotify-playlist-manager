@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import { parse } from 'cookie';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { NextPage, NextPageContext } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
 import SpotifyUserApi from '../../apis/SpotifyUserApi';
 import { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
-import { CookieKey } from '../../constants/CookieKey';
-import { spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 import styles from '../../styles/Home.module.css';
 import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
+import { parseAuthorization } from '../../server/request/pipes/parseAuthorization';
 
 export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
     try {
+        console.log('[I]/pages/spotify-playlist-clone:getServerSideProps');
+
         const cookieHeader = context.req?.headers.cookie;
 
         if (!cookieHeader) {
@@ -26,9 +26,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
             };
         }
 
-        const cookieMap = parse(cookieHeader, { decode: (s) => decodeURIComponent(s) });
-        const sessionId = cookieMap[CookieKey.SESSION_ID_COOKIE_KEY].trim();
-        const authorization = await spotifyAuthorizationStore.get(sessionId);
+        const authorization = await parseAuthorization(cookieHeader);
 
         if (!authorization) {
             console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
@@ -41,6 +39,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
         }
 
         const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
+
         const currentProfile = await spotifyUserApi.getCurrentUserProfile();
         // TODO: pagination all
         const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id, 50);
@@ -52,6 +51,8 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
             }, // will be passed to the page component as props
         };
     } catch (err) {
+        console.error('[E]/pages/spotify-playlist-clone:getServerSideProps', err);
+
         return {
             props: {
                 error: 'internal',
@@ -63,9 +64,15 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
     const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
 
-    const handlePlaylistRowClick = (playlist: Playlist) => {
+    const handlePlaylistRowClick = useCallback((playlist: Playlist) => {
         setSelectedPlaylist(playlist);
-    };
+    }, [setSelectedPlaylist]);
+
+    useEffect(() => {
+        (async () => {
+            selectedPlaylist;
+        })();
+    }, [selectedPlaylist]);
 
     return (
         <div className={styles.container}>
@@ -85,7 +92,11 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                         <h3>
                             Hello {props.spotifyUserId}
                         </h3>
-                        <PlaylistTable selectedPlaylist={selectedPlaylist} onPlaylistRowClick={handlePlaylistRowClick} playlists={props.playlists} />
+                        <PlaylistTable
+                            selectedPlaylist={selectedPlaylist}
+                            onPlaylistRowClick={handlePlaylistRowClick}
+                            playlists={props.playlists}
+                        />
                     </React.Fragment>
                 )}
             </main>

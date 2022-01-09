@@ -1,10 +1,8 @@
-import { parse } from 'cookie';
 import type { NextPage, NextPageContext, GetServerSidePropsResult } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
 import SpotifyUserApi from '../../../apis/SpotifyUserApi';
-import { CookieKey } from '../../../constants/CookieKey';
-import { spotifyAuthorizationStore } from '../../../stores/SpotifyAuthorizationStore';
+import { parseAuthorization } from '../../../server/request/pipes/parseAuthorization';
 import styles from '../../../styles/Home.module.css';
 
 export async function getServerSideProps(context: NextPageContext): Promise<GetServerSidePropsResult<HomePageProps>> {
@@ -37,23 +35,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
             };
         }
 
-        const cookieMap = parse(cookieHeader, { decode: (s) => decodeURIComponent(s) });
-        const cookie = cookieMap[CookieKey.SESSION_ID_COOKIE_KEY];
-
-        if (!cookie) {
-            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
-
-            return {
-                props: {
-                    authorizeUrl: authorizeUrl,
-                    spotifyUserId: null,
-                    error: 'not_logged_in',
-                },
-            };
-        }
-
-        const sessionId = cookie.trim();
-        const authorization = await spotifyAuthorizationStore.get(sessionId);
+        const authorization = await parseAuthorization(cookieHeader);
 
         if (!authorization) {
             console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
@@ -78,7 +60,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
             },
         };
     } catch (err) {
-        console.log('[E]authorize', err);
+        console.error('[E]/pages/spotify-playlist-clone/oauth2/authorize:getServerSideProps', err);
 
         return {
             props: {
