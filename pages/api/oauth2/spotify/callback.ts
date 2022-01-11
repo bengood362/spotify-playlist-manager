@@ -4,7 +4,7 @@ import { spotifyAuthorizationStore } from '../../../../stores/SpotifyAuthorizati
 import { nanoid } from 'nanoid';
 import { CookieKey } from '../../../../constants/CookieKey';
 import SpotifyAuthApi from '../../../../apis/SpotifyAuthApi';
-import { fromGetTokenResponse } from '../../../../server/model/adapter/spotifyAuthorization';
+import { fromIssueTokenByAuthCodeResponse } from '../../../../server/model/adapter/spotifyAuthorization';
 
 type Data = {
     message: string,
@@ -39,7 +39,7 @@ export default async function handler(
 
         const tokenResponseData = await spotifyAuthApi.getTokenByAuthCode(code);
 
-        const authorization = fromGetTokenResponse(tokenResponseData, new Date());
+        const authorization = fromIssueTokenByAuthCodeResponse(tokenResponseData, new Date());
         const sessionId = req.cookies[CookieKey.SESSION_ID_COOKIE_KEY] ?? nanoid();
 
         await spotifyAuthorizationStore.set(sessionId, authorization);
@@ -54,7 +54,7 @@ export default async function handler(
 
         res.redirect(200, responseText);
     } catch (err) {
-        console.log('[E]:/api/oauth2/spotify/callback', err);
+        console.error('[E]:/api/oauth2/spotify/callback', err);
 
         res.status(500).json({ message: 'internal_server_error' });
     }

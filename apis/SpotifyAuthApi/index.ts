@@ -1,6 +1,7 @@
 import axios, { AxiosResponse, AxiosBasicCredentials } from 'axios';
 import { GetTokenParams } from './_types/token/GetTokenParams';
-import { GetTokenResponse } from './_types/token/GetTokenResponse';
+import { IssueTokenByAuthCodeResponse } from './_types/token/IssueTokenByAuthCodeResponse';
+import { IssueTokenByRefreshTokenResponse } from './_types/token/IssueTokenByRefreshTokenResponse';
 
 const redirectUri = 'http://127.0.0.1:3000/api/oauth2/spotify/callback';
 
@@ -15,7 +16,7 @@ export default class SpotifyAuthApi {
         this.authorization = authorization;
     }
 
-    readonly refreshAccessToken = async (refreshToken: string): Promise<GetTokenResponse> => {
+    readonly refreshAccessToken = async (refreshToken: string): Promise<IssueTokenByRefreshTokenResponse> => {
         const apiUrl = `${this.apiHost}/api/token`;
         const params = new URLSearchParams();
 
@@ -23,7 +24,7 @@ export default class SpotifyAuthApi {
         params.append('grant_type', 'refresh_token');
 
         // TODO: authorize
-        const response = await axios.post<GetTokenParams, AxiosResponse<GetTokenResponse>>(
+        const response = await axios.post<GetTokenParams, AxiosResponse<IssueTokenByRefreshTokenResponse>>(
             apiUrl,
             params, {
                 headers: {
@@ -34,7 +35,7 @@ export default class SpotifyAuthApi {
         );
 
         if (response.status < 200 || response.status >= 300) {
-            console.log('[E]SpotifyAuthApi:refreshAccessToken', response.data);
+            console.error('[E]SpotifyAuthApi:refreshAccessToken', response.data);
 
             throw new Error('failed_to_fetch_token');
         }
@@ -42,7 +43,7 @@ export default class SpotifyAuthApi {
         return response.data;
     }
 
-    readonly getTokenByAuthCode = async (authCode: string): Promise<GetTokenResponse> => {
+    readonly getTokenByAuthCode = async (authCode: string): Promise<IssueTokenByAuthCodeResponse> => {
         const apiUrl = `${this.apiHost}/api/token`;
         const params = new URLSearchParams();
 
@@ -50,8 +51,7 @@ export default class SpotifyAuthApi {
         params.append('redirect_uri', redirectUri);
         params.append('grant_type', 'authorization_code');
 
-        // TODO: authorize
-        const response = await axios.post<GetTokenParams, AxiosResponse<GetTokenResponse>>(
+        const response = await axios.post<GetTokenParams, AxiosResponse<IssueTokenByAuthCodeResponse>>(
             apiUrl,
             params, {
                 headers: {
@@ -62,7 +62,7 @@ export default class SpotifyAuthApi {
         );
 
         if (response.status < 200 || response.status >= 300) {
-            console.log('[E]SpotifyAuthApi:getTokenByAuthCode', response.data);
+            console.error('[E]SpotifyAuthApi:getTokenByAuthCode', response.data);
 
             throw new Error('failed_to_fetch_token');
         }

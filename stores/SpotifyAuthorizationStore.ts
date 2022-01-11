@@ -1,12 +1,12 @@
 import Redis from 'ioredis';
-import { GetTokenResponse } from '../apis/SpotifyAuthApi/_types/token/GetTokenResponse';
+import { IssueTokenByAuthCodeResponse } from '../apis/SpotifyAuthApi/_types/token/IssueTokenByAuthCodeResponse';
 
 export type SpotifyAuthorization = {
-    accessToken: GetTokenResponse['access_token'],
-    tokenType: GetTokenResponse['token_type'],
-    refreshToken: GetTokenResponse['refresh_token'],
-    expiresIn: GetTokenResponse['expires_in'],
-    scope: GetTokenResponse['scope'],
+    accessToken: IssueTokenByAuthCodeResponse['access_token'],
+    tokenType: IssueTokenByAuthCodeResponse['token_type'],
+    refreshToken: IssueTokenByAuthCodeResponse['refresh_token'],
+    expiresIn: IssueTokenByAuthCodeResponse['expires_in'],
+    scope: IssueTokenByAuthCodeResponse['scope'],
 
     /**
      * @property {issuedAt} string An Access Token that can be provided in subsequent calls, for example to Spotify Web API services.
@@ -58,6 +58,10 @@ class SpotifyAuthorizationStore implements ISpotifyAuthorizationStore {
         await this.redisClient.hset(this.getRedisKey(key), authorization);
     }
 
+    async del(key: string): Promise<void> {
+        await this.redisClient.del(this.getRedisKey(key));
+    }
+
     async get(key: string): Promise<SpotifyAuthorization | null> {
         const result = await this.redisClient.hgetall(this.getRedisKey(key));
 
@@ -68,6 +72,7 @@ class SpotifyAuthorizationStore implements ISpotifyAuthorizationStore {
 export interface ISpotifyAuthorizationStore {
     set(key: string, authorization: SpotifyAuthorization): Promise<void>
     get(key: string): Promise<SpotifyAuthorization | null>
+    del(key: string): Promise<void>
 }
 
 // TODO: currently the singleton wont work, as nextjs doesnt "cache" the import

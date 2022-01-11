@@ -15,17 +15,50 @@ import { GetTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
 import SpotifyAuthApi from '../../apis/SpotifyAuthApi';
 import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 import { parseSessionId } from '../../server/request/header/parseSessionId';
-import { fromGetTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
+import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
 
-const fetchPageWithRetry = async (sessionId: string, authorization: SpotifyAuthorization, spotifyAuthorizationStore: ISpotifyAuthorizationStore, spotifyAuthApi: SpotifyAuthApi, spotifyUserApi: SpotifyUserApi, retry = 1, lastError: unknown = null): Promise<{ props: SpotifyPlaylistCloneProps }> => {
+const handleAccessTokenExpiredError = (
+    sessionId: string,
+    authorization: SpotifyAuthorization,
+) => async (
+    spotifyAuthApi: SpotifyAuthApi,
+    spotifyAuthorizationStore: ISpotifyAuthorizationStore,
+): Promise<SpotifyAuthorization> => {
+    try {
+        const tokenResponseData = await spotifyAuthApi.refreshAccessToken(authorization.refreshToken);
 
-    if (retry === 0) {
+        const newAuthorization = {
+            ...authorization,
+            ...fromIssueTokenByRefreshTokenResponse(tokenResponseData, new Date()),
+        };
+
+        await spotifyAuthorizationStore.set(sessionId, newAuthorization);
+
+        return newAuthorization;
+    } catch (err) {
+        // if for any reason access token doesn't work, destroy the session
+        await spotifyAuthorizationStore.del(sessionId);
+
+        throw err;
+    }
+};
+
+const fetchPageWithRetry = (
+    sessionId: string,
+    authorization: SpotifyAuthorization,
+    retry = 1, lastError: unknown = null,
+) => async (
+    spotifyAuthorizationStore: ISpotifyAuthorizationStore,
+    spotifyAuthApi: SpotifyAuthApi,
+    spotifyUserApi: SpotifyUserApi,
+): Promise<{ props: SpotifyPlaylistCloneProps }> => {
+    if (retry < 0) {
         throw lastError;
     }
 
     try {
         const currentProfile = await spotifyUserApi.getCurrentUserProfile();
-        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id, 50);
+        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id, 5);
 
         return {
             props: {
@@ -36,23 +69,22 @@ const fetchPageWithRetry = async (sessionId: string, authorization: SpotifyAutho
             }, // will be passed to the page component as props
         };
     } catch (err) {
+        // TODO: retry-backoff
+        console.error('[E]fetchPageWithRetry', err);
         if (err instanceof Error && err.message === 'access_token_expired') {
-            const tokenResponseData = await spotifyAuthApi.refreshAccessToken(authorization.refreshToken);
-            const newAuthorization = fromGetTokenResponse(tokenResponseData, new Date());
+            const newAuthorization = await handleAccessTokenExpiredError(sessionId, authorization)(spotifyAuthApi, spotifyAuthorizationStore);
+            const newSpotifyUserApi = new SpotifyUserApi(newAuthorization.tokenType, newAuthorization.accessToken);
 
-            await spotifyAuthorizationStore.set(sessionId, newAuthorization);
-
-            return await fetchPageWithRetry(sessionId, newAuthorization, spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi, retry, err);
+            return await fetchPageWithRetry(sessionId, newAuthorization, retry - 1, err)(spotifyAuthorizationStore, spotifyAuthApi, newSpotifyUserApi);
         }
 
-        return await fetchPageWithRetry(sessionId, authorization, spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi, retry - 1, err);
+        return await fetchPageWithRetry(sessionId, authorization, retry - 1, err)(spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi);
     }
 };
 
 export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
     try {
         console.log('[I]/pages/spotify-playlist-clone:getServerSideProps');
-
 
         if (
             !process.env.SPOTIFY_CLIENT_ID ||
@@ -65,35 +97,35 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
         const cookieHeader = context.req?.headers.cookie;
 
         if (!cookieHeader) {
-            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
-            // TODO: redirect to authorize
+            console.error('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
 
-            return {
-                props: {
-                    error: 'not_logged_in',
-                },
-            };
+            throw new Error('not_logged_in');
         }
 
         const sessionId = parseSessionId(cookieHeader);
         const authorization = await parseAuthorization(cookieHeader);
 
         if (!authorization || !sessionId) {
-            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
+            console.error('[E]/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
 
-            return {
-                props: {
-                    error: 'not_logged_in',
-                },
-            };
+            throw new Error('not_logged_in');
         }
 
         const spotifyAuthApi = new SpotifyAuthApi({ username: process.env.SPOTIFY_CLIENT_ID, password: process.env.SPOTIFY_CLIENT_SECRET });
         const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
 
-        return await fetchPageWithRetry(sessionId, authorization, spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi, 1);
+        return await fetchPageWithRetry(sessionId, authorization, 1, null)(spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi);
     } catch (err) {
+        // TODO: redirect to authorize for not_logged_in
         console.error('[E]/pages/spotify-playlist-clone:getServerSideProps', err);
+
+        if (err instanceof Error) {
+            return {
+                props: {
+                    error: err.message,
+                },
+            };
+        }
 
         return {
             props: {
@@ -109,23 +141,25 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
 
     const handlePlaylistRowClick = useCallback(async (playlist: Playlist) => {
         setSelectedPlaylist(playlist);
-
-        const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${playlist.id}/tracks`);
-
-        if (getTracksResponse.status === 200) {
-            console.log('[I]tracksResponse', getTracksResponse.data);
-
-            setTracks(getTracksResponse.data.items.map(({ track }) => (track)));
-        }
     }, [setSelectedPlaylist]);
 
     const handleTrackRowClick = useCallback((track: Track) => {
-        console.log('handleTrackRowClick:track', track);
+        console.log('Home:handleTrackRowClick:track', track);
     }, []);
 
     useEffect(() => {
         (async () => {
-            console.log('selectedPlaylist', selectedPlaylist);
+            if (!selectedPlaylist) {
+                return;
+            }
+
+            const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${selectedPlaylist.id}/tracks`);
+
+            if (getTracksResponse.status === 200) {
+                console.log('[I]tracksResponse', getTracksResponse.data);
+
+                setTracks(getTracksResponse.data.items.map(({ track }) => (track)));
+            }
         })();
     }, [selectedPlaylist]);
 

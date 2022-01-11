@@ -23,7 +23,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
         const cookieHeader = context.req?.headers.cookie;
 
         if (!cookieHeader) {
-            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
+            console.error('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
             // TODO: redirect to authorize
 
             return {
@@ -38,7 +38,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
         const authorization = await parseAuthorization(cookieHeader);
 
         if (!authorization) {
-            console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
+            console.error('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
 
             return {
                 props: {

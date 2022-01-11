@@ -53,7 +53,7 @@ export default class SpotifyUserApi {
         });
 
         if (response.status !== 200) {
-            console.log('[E]SpotifyUserApi:getCurrentUserProfile', response.data);
+            console.error('[E]SpotifyUserApi:getCurrentUserProfile', response.data);
 
             throw new Error('failed_to_fetch_token');
         }
@@ -61,7 +61,11 @@ export default class SpotifyUserApi {
         return response.data;
     })
 
-    readonly getUserPlaylists = this.refreshTokenRetryExceptionFilter(async (userId: string, limit: number, offset = 0): Promise<GetPlaylistsResponse> => {
+    readonly getUserPlaylists = this.refreshTokenRetryExceptionFilter(async (
+        userId: string,
+        limit: number,
+        offset = 0,
+    ): Promise<GetPlaylistsResponse> => {
         const queryString = qs.stringify({
             limit,
             offset,
@@ -75,7 +79,33 @@ export default class SpotifyUserApi {
         });
 
         if (response.status !== 200) {
-            console.log('[E]SpotifyUserApi:getUserPlaylists', response.data);
+            console.error('[E]SpotifyUserApi:getUserPlaylists', response.data);
+
+            throw new Error('failed_to_fetch_user_playlists');
+        }
+
+        return response.data;
+    });
+
+    readonly getPlaylist = this.refreshTokenRetryExceptionFilter(async (
+        playlistId: string,
+        limit: number,
+        offset = 0,
+    ): Promise<GetPlaylistsResponse> => {
+        const queryString = qs.stringify({
+            limit,
+            offset,
+        });
+        const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}?${queryString}`;
+
+        const response = await axios.get<GetPlaylistsParams, AxiosResponse<GetPlaylistsResponse>>(apiUrl, {
+            headers: {
+                Authorization: `${this.tokenType} ${this.accessToken}`,
+            },
+        });
+
+        if (response.status !== 200) {
+            console.error('[E]SpotifyUserApi:getUserPlaylists', response.data);
 
             throw new Error('failed_to_fetch_user_playlists');
         }
@@ -104,7 +134,7 @@ export default class SpotifyUserApi {
         });
 
         if (response.status !== 200) {
-            console.log('[E]SpotifyUserApi:getPlaylistItems', response.data);
+            console.error('[E]SpotifyUserApi:getPlaylistItems', response.data);
 
             throw new Error('failed_to_fetch_playlist_items');
         }

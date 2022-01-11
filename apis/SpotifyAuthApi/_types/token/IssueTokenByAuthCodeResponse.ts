@@ -1,5 +1,5 @@
 // https://developer.spotify.com/documentation/general/guides/authorization/code-flow/
-export type GetTokenResponse = {
+export type IssueTokenByAuthCodeResponse = {
     /**
      * @property {access_token} string An Access Token that can be provided in subsequent calls, for example to Spotify Web API services.
      **/
