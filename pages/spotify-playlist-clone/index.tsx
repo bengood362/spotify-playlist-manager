@@ -8,14 +8,59 @@ import styles from '../../styles/Home.module.css';
 import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
 import { TrackTable } from '../../components/track/TrackTable';
-import { parseAuthorization } from '../../server/request/pipes/parseAuthorization';
+import { parseAuthorization } from '../../server/request/header/parseAuthorization';
 import { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
 import axios from 'axios';
 import { GetTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
+import SpotifyAuthApi from '../../apis/SpotifyAuthApi';
+import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
+import { parseSessionId } from '../../server/request/header/parseSessionId';
+import { fromGetTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
+
+const fetchPageWithRetry = async (sessionId: string, authorization: SpotifyAuthorization, spotifyAuthorizationStore: ISpotifyAuthorizationStore, spotifyAuthApi: SpotifyAuthApi, spotifyUserApi: SpotifyUserApi, retry = 1, lastError: unknown = null): Promise<{ props: SpotifyPlaylistCloneProps }> => {
+
+    if (retry === 0) {
+        throw lastError;
+    }
+
+    try {
+        const currentProfile = await spotifyUserApi.getCurrentUserProfile();
+        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id, 50);
+
+        return {
+            props: {
+                spotifyUserId: currentProfile.id,
+                playlists: getPlaylistsResponse.items.filter((playlist) => playlist.owner.id === currentProfile.id),
+                playlistsTotalPages: getPlaylistsResponse.total,
+                playlistsOffset: getPlaylistsResponse.offset,
+            }, // will be passed to the page component as props
+        };
+    } catch (err) {
+        if (err instanceof Error && err.message === 'access_token_expired') {
+            const tokenResponseData = await spotifyAuthApi.refreshAccessToken(authorization.refreshToken);
+            const newAuthorization = fromGetTokenResponse(tokenResponseData, new Date());
+
+            await spotifyAuthorizationStore.set(sessionId, newAuthorization);
+
+            return await fetchPageWithRetry(sessionId, newAuthorization, spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi, retry, err);
+        }
+
+        return await fetchPageWithRetry(sessionId, authorization, spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi, retry - 1, err);
+    }
+};
 
 export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
     try {
         console.log('[I]/pages/spotify-playlist-clone:getServerSideProps');
+
+
+        if (
+            !process.env.SPOTIFY_CLIENT_ID ||
+            !process.env.SPOTIFY_CLIENT_SECRET ||
+            !process.env.SPOTIFY_REDIRECT_URI
+        ) {
+            throw new Error('invalid_config');
+        }
 
         const cookieHeader = context.req?.headers.cookie;
 
@@ -30,9 +75,10 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
             };
         }
 
+        const sessionId = parseSessionId(cookieHeader);
         const authorization = await parseAuthorization(cookieHeader);
 
-        if (!authorization) {
+        if (!authorization || !sessionId) {
             console.log('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
 
             return {
@@ -42,18 +88,10 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
             };
         }
 
+        const spotifyAuthApi = new SpotifyAuthApi({ username: process.env.SPOTIFY_CLIENT_ID, password: process.env.SPOTIFY_CLIENT_SECRET });
         const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
 
-        const currentProfile = await spotifyUserApi.getCurrentUserProfile();
-        // TODO: pagination all
-        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id, 50);
-
-        return {
-            props: {
-                spotifyUserId: currentProfile.id,
-                playlists: getPlaylistsResponse.items.filter((playlist) => playlist.owner.id === currentProfile.id),
-            }, // will be passed to the page component as props
-        };
+        return await fetchPageWithRetry(sessionId, authorization, spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi, 1);
     } catch (err) {
         console.error('[E]/pages/spotify-playlist-clone:getServerSideProps', err);
 
@@ -91,6 +129,17 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         })();
     }, [selectedPlaylist]);
 
+    if (isErrorProps(props)) {
+        return <pre>{props.error}</pre>;
+    }
+
+    const {
+        spotifyUserId,
+        playlists,
+        playlistsTotalPages,
+        playlistsOffset,
+    } = props;
+
     return (
         <div className={styles.container}>
             <Head>
@@ -100,32 +149,26 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             </Head>
 
             <main className={styles.main}>
-                {isErrorProps(props) ? (
-                    <p>
-                        {props.error}
-                    </p>
-                ) : (
-                    <React.Fragment>
-                        <h3>
-                            Hello {props.spotifyUserId}
-                        </h3>
-                        <PlaylistTable
-                            selectedPlaylist={selectedPlaylist}
-                            onPlaylistRowClick={handlePlaylistRowClick}
-                            playlists={props.playlists}
-                        />
+                <h3>
+                    Hello {spotifyUserId}
+                    <p>{playlistsTotalPages}</p>
+                    <p>{playlistsOffset}</p>
+                </h3>
+                <PlaylistTable
+                    selectedPlaylist={selectedPlaylist}
+                    onPlaylistRowClick={handlePlaylistRowClick}
+                    playlists={playlists}
+                />
 
-                        {selectedPlaylist !== null ? (
-                            <React.Fragment>
-                                <hr />
-                                <TrackTable
-                                    tracks={tracks}
-                                    onTrackRowClick={handleTrackRowClick}
-                                />
-                            </React.Fragment>
-                        ) : null}
+                {selectedPlaylist !== null ? (
+                    <React.Fragment>
+                        <hr />
+                        <TrackTable
+                            tracks={tracks}
+                            onTrackRowClick={handleTrackRowClick}
+                        />
                     </React.Fragment>
-                )}
+                ) : null}
             </main>
 
             <footer className={styles.footer}>
@@ -149,4 +192,6 @@ export default Home;
 type SpotifyPlaylistCloneProps = ErrorProps | {
     spotifyUserId: string;
     playlists: Playlist[];
+    playlistsTotalPages: number,
+    playlistsOffset: number,
 }

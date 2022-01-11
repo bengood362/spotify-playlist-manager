@@ -1,0 +1,1 @@
+export type Album = Record<string, any>;

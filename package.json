@@ -20,6 +20,7 @@
     "next": "^12.0.3",
     "prop-types": "^15.7.2",
     "qs": "^6.10.1",
+    "ramda": "^0.27.1",
     "react": "17.0.2",
     "react-dom": "17.0.2"
   },
@@ -27,6 +28,7 @@
     "@types/cookie": "^0.4.1",
     "@types/ioredis": "^4.28.1",
     "@types/qs": "^6.9.7",
+    "@types/ramda": "^0.27.62",
     "@types/react": "17.0.31",
     "@typescript-eslint/eslint-plugin": "^5.1.0",
     "eslint": "8.1.0",

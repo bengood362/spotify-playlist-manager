@@ -1,3 +1,4 @@
+import R from 'ramda';
 import axios, { AxiosResponse } from 'axios';
 import qs from 'qs';
 import { GetMeParams } from './_types/me/GetMeParams';
@@ -16,8 +17,27 @@ export default class SpotifyUserApi {
 
     refreshTokenRetryExceptionFilter = <P extends any[], R, F extends (...args: P) => PromiseLike<R>>(func: F) => async (...args: Parameters<F>): Promise<ReturnType<F>> => {
         try {
-            return func(...args);
-        } catch (err) {
+            return await func(...args);
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                const authHeader = err.response?.headers['www-authenticate'];
+
+                // Bearer realm="spotify", error="invalid_token", error_description="The access token expired"
+                if (authHeader) {
+                    const pairs = authHeader.split(', ').map((kv): [string, string] => {
+                        const kvComponent = kv.split('=');
+                        const [key, value] = kvComponent;
+
+                        return [key, value];
+                    });
+                    const authHeaderObj = R.fromPairs(pairs);
+
+                    if (/The access token expired/.test(authHeaderObj['error_description'])) {
+                        throw new Error('access_token_expired');
+                    }
+                }
+            }
+
             throw err;
         }
     }
@@ -32,7 +52,7 @@ export default class SpotifyUserApi {
             },
         });
 
-        if (response.status < 200 || response.status >= 300) {
+        if (response.status !== 200) {
             console.log('[E]SpotifyUserApi:getCurrentUserProfile', response.data);
 
             throw new Error('failed_to_fetch_token');
@@ -54,22 +74,25 @@ export default class SpotifyUserApi {
             },
         });
 
-        if (response.status < 200 || response.status >= 300) {
-            console.log('[E]SpotifyUserApi:getCurrentUserProfile', response.data);
+        if (response.status !== 200) {
+            console.log('[E]SpotifyUserApi:getUserPlaylists', response.data);
 
-            throw new Error('failed_to_fetch_token');
+            throw new Error('failed_to_fetch_user_playlists');
         }
 
         return response.data;
     });
 
-    readonly getPlaylistItems = this.refreshTokenRetryExceptionFilter(async (playlistId: string, offset = 0): Promise<GetPlaylistTracksResponse> => {
+    readonly getPlaylistItems = this.refreshTokenRetryExceptionFilter(async (
+        playlistId: string,
+        limit = 5,
+        offset = 0,
+    ): Promise<GetPlaylistTracksResponse> => {
         const params: Partial<GetPlaylistTracksParams> = {
             additional_types: 'track',
-            limit: 50,
+            limit: limit,
             offset: offset,
             market: 'HK',
-            fields: 'items(track(name,href,album(name,href)))',
         };
         const queryString = qs.stringify(params);
         const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?${queryString}`;
@@ -80,7 +103,7 @@ export default class SpotifyUserApi {
             },
         });
 
-        if (response.status < 200 || response.status >= 300) {
+        if (response.status !== 200) {
             console.log('[E]SpotifyUserApi:getPlaylistItems', response.data);
 
             throw new Error('failed_to_fetch_playlist_items');

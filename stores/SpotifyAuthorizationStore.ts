@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 import { GetTokenResponse } from '../apis/SpotifyAuthApi/_types/token/GetTokenResponse';
 
-type SpotifyAuthorization = {
+export type SpotifyAuthorization = {
     accessToken: GetTokenResponse['access_token'],
     tokenType: GetTokenResponse['token_type'],
     refreshToken: GetTokenResponse['refresh_token'],
@@ -38,7 +38,7 @@ function toSpotifyAuthorization(sad: SpotifyAuthorizationDto): SpotifyAuthorizat
     };
 }
 
-class SpotifyAuthorizationStore {
+class SpotifyAuthorizationStore implements ISpotifyAuthorizationStore {
     private redisClient: Redis.Redis;
     private prefix: string;
     public authorizationMap: Record<string, SpotifyAuthorization> = {};
@@ -63,6 +63,11 @@ class SpotifyAuthorizationStore {
 
         return isSpotifyAuthorizationDto(result) ? toSpotifyAuthorization(result) : null;
     }
+}
+
+export interface ISpotifyAuthorizationStore {
+    set(key: string, authorization: SpotifyAuthorization): Promise<void>
+    get(key: string): Promise<SpotifyAuthorization | null>
 }
 
 // TODO: currently the singleton wont work, as nextjs doesnt "cache" the import

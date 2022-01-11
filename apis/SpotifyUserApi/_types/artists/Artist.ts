@@ -1,0 +1,1 @@
+export type Artist = Record<string, any>;

@@ -15,6 +15,33 @@ export default class SpotifyAuthApi {
         this.authorization = authorization;
     }
 
+    readonly refreshAccessToken = async (refreshToken: string): Promise<GetTokenResponse> => {
+        const apiUrl = `${this.apiHost}/api/token`;
+        const params = new URLSearchParams();
+
+        params.append('refresh_token', refreshToken);
+        params.append('grant_type', 'refresh_token');
+
+        // TODO: authorize
+        const response = await axios.post<GetTokenParams, AxiosResponse<GetTokenResponse>>(
+            apiUrl,
+            params, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                auth: this.authorization,
+            },
+        );
+
+        if (response.status < 200 || response.status >= 300) {
+            console.log('[E]SpotifyAuthApi:refreshAccessToken', response.data);
+
+            throw new Error('failed_to_fetch_token');
+        }
+
+        return response.data;
+    }
+
     readonly getTokenByAuthCode = async (authCode: string): Promise<GetTokenResponse> => {
         const apiUrl = `${this.apiHost}/api/token`;
         const params = new URLSearchParams();

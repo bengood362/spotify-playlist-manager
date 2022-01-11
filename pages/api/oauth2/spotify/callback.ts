@@ -4,6 +4,7 @@ import { spotifyAuthorizationStore } from '../../../../stores/SpotifyAuthorizati
 import { nanoid } from 'nanoid';
 import { CookieKey } from '../../../../constants/CookieKey';
 import SpotifyAuthApi from '../../../../apis/SpotifyAuthApi';
+import { fromGetTokenResponse } from '../../../../server/model/adapter/spotifyAuthorization';
 
 type Data = {
     message: string,
@@ -38,23 +39,10 @@ export default async function handler(
 
         const tokenResponseData = await spotifyAuthApi.getTokenByAuthCode(code);
 
-        const {
-            access_token: accessToken,
-            expires_in: expiresIn,
-            refresh_token: refreshToken,
-            scope: scope,
-            token_type: tokenType,
-        } = tokenResponseData;
+        const authorization = fromGetTokenResponse(tokenResponseData, new Date());
         const sessionId = req.cookies[CookieKey.SESSION_ID_COOKIE_KEY] ?? nanoid();
 
-        await spotifyAuthorizationStore.set(sessionId, {
-            accessToken,
-            refreshToken,
-            tokenType,
-            scope,
-            expiresIn,
-            issuedAt: Date.now() / 1000,
-        });
+        await spotifyAuthorizationStore.set(sessionId, authorization);
 
         res.setHeader('Set-Cookie', [
             serialize(CookieKey.SESSION_ID_COOKIE_KEY, sessionId, { httpOnly: true, sameSite: 'lax', path: '/' }),

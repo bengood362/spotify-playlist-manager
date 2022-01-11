@@ -2,7 +2,7 @@ import type { NextPage, NextPageContext, GetServerSidePropsResult } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
 import SpotifyUserApi from '../../../apis/SpotifyUserApi';
-import { parseAuthorization } from '../../../server/request/pipes/parseAuthorization';
+import { parseAuthorization } from '../../../server/request/header/parseAuthorization';
 import styles from '../../../styles/Home.module.css';
 
 export async function getServerSideProps(context: NextPageContext): Promise<GetServerSidePropsResult<HomePageProps>> {

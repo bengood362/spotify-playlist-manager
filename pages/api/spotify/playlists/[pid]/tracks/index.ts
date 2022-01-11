@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import SpotifyUserApi from '../../../../../../apis/SpotifyUserApi';
 import type { GetPlaylistTracksResponse } from '../../../../../../apis/SpotifyUserApi/_types/tracks/GetPlaylistTracksResponse';
-import { parseAuthorization } from '../../../../../../server/request/pipes/parseAuthorization';
+import { parseAuthorization } from '../../../../../../server/request/header/parseAuthorization';
 import { parseFiniteNumber } from '../../../../../../server/request/queryparam/parseFiniteNumber';
 
 export type GetTrackResponse = GetPlaylistTracksResponse;
@@ -38,7 +38,7 @@ export default async function handler(
             throw new Error('bad_request');
         }
 
-        const playlistItems = await spotifyUserApi.getPlaylistItems(playlistId, offset);
+        const playlistItems = await spotifyUserApi.getPlaylistItems(playlistId, 5, offset);
 
         res.status(200).json(playlistItems);
     } catch (err) {
