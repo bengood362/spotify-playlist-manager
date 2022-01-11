@@ -7,7 +7,11 @@ import { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
 import styles from '../../styles/Home.module.css';
 import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
+import { TrackTable } from '../../components/track/TrackTable';
 import { parseAuthorization } from '../../server/request/pipes/parseAuthorization';
+import { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
+import axios from 'axios';
+import { GetTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
 
 export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
     try {
@@ -63,14 +67,27 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 
 const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
     const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+    const [tracks, setTracks] = useState<Track[]>([]);
 
-    const handlePlaylistRowClick = useCallback((playlist: Playlist) => {
+    const handlePlaylistRowClick = useCallback(async (playlist: Playlist) => {
         setSelectedPlaylist(playlist);
+
+        const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${playlist.id}/tracks`);
+
+        if (getTracksResponse.status === 200) {
+            console.log('[I]tracksResponse', getTracksResponse.data);
+
+            setTracks(getTracksResponse.data.items.map(({ track }) => (track)));
+        }
     }, [setSelectedPlaylist]);
+
+    const handleTrackRowClick = useCallback((track: Track) => {
+        console.log('handleTrackRowClick:track', track);
+    }, []);
 
     useEffect(() => {
         (async () => {
-            selectedPlaylist;
+            console.log('selectedPlaylist', selectedPlaylist);
         })();
     }, [selectedPlaylist]);
 
@@ -97,6 +114,16 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                             onPlaylistRowClick={handlePlaylistRowClick}
                             playlists={props.playlists}
                         />
+
+                        {selectedPlaylist !== null ? (
+                            <React.Fragment>
+                                <hr />
+                                <TrackTable
+                                    tracks={tracks}
+                                    onTrackRowClick={handleTrackRowClick}
+                                />
+                            </React.Fragment>
+                        ) : null}
                     </React.Fragment>
                 )}
             </main>

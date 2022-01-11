@@ -3,7 +3,7 @@ import { Track } from './Track';
 // https://developer.spotify.com/documentation/web-api/reference/#/operations/get-list-users-playlists
 export type GetPlaylistTracksResponse = {
     href: string,
-    items: Track[],
+    items: { track: Track }[],
     limit: number,
     next: string | null,
     offset: number,

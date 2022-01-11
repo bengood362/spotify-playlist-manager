@@ -9,15 +9,26 @@ import { GetPlaylistTracksResponse } from './_types/tracks/GetPlaylistTracksResp
 
 export default class SpotifyUserApi {
     // requires user oauth
-    constructor(private readonly tokenType: string, private readonly token: string) {}
+    constructor(
+        private tokenType: string,
+        private accessToken: string,
+    ) {}
+
+    refreshTokenRetryExceptionFilter = <P extends any[], R, F extends (...args: P) => PromiseLike<R>>(func: F) => async (...args: Parameters<F>): Promise<ReturnType<F>> => {
+        try {
+            return func(...args);
+        } catch (err) {
+            throw err;
+        }
+    }
 
     // https://developer.spotify.com/documentation/web-api/reference/#/operations/get-current-users-profile
-    readonly getCurrentUserProfile = async (): Promise<GetMeResponse> => {
+    readonly getCurrentUserProfile = this.refreshTokenRetryExceptionFilter(async (): Promise<GetMeResponse> => {
         const apiUrl = 'https://api.spotify.com/v1/me';
 
         const response = await axios.get<GetMeParams, AxiosResponse<GetMeResponse>>(apiUrl, {
             headers: {
-                Authorization: `${this.tokenType} ${this.token}`,
+                Authorization: `${this.tokenType} ${this.accessToken}`,
             },
         });
 
@@ -28,9 +39,9 @@ export default class SpotifyUserApi {
         }
 
         return response.data;
-    }
+    })
 
-    readonly getUserPlaylists = async (userId: string, limit: number, offset = 0): Promise<GetPlaylistsResponse> => {
+    readonly getUserPlaylists = this.refreshTokenRetryExceptionFilter(async (userId: string, limit: number, offset = 0): Promise<GetPlaylistsResponse> => {
         const queryString = qs.stringify({
             limit,
             offset,
@@ -39,7 +50,7 @@ export default class SpotifyUserApi {
 
         const response = await axios.get<GetPlaylistsParams, AxiosResponse<GetPlaylistsResponse>>(apiUrl, {
             headers: {
-                Authorization: `${this.tokenType} ${this.token}`,
+                Authorization: `${this.tokenType} ${this.accessToken}`,
             },
         });
 
@@ -50,9 +61,9 @@ export default class SpotifyUserApi {
         }
 
         return response.data;
-    }
+    });
 
-    readonly getPlaylistItems = async (playlistId: string, offset = 0): Promise<GetPlaylistTracksResponse> => {
+    readonly getPlaylistItems = this.refreshTokenRetryExceptionFilter(async (playlistId: string, offset = 0): Promise<GetPlaylistTracksResponse> => {
         const params: Partial<GetPlaylistTracksParams> = {
             additional_types: 'track',
             limit: 50,
@@ -65,7 +76,7 @@ export default class SpotifyUserApi {
 
         const response = await axios.get<GetPlaylistTracksParams, AxiosResponse<GetPlaylistTracksResponse>>(apiUrl, {
             headers: {
-                Authorization: `${this.tokenType} ${this.token}`,
+                Authorization: `${this.tokenType} ${this.accessToken}`,
             },
         });
 
@@ -76,5 +87,5 @@ export default class SpotifyUserApi {
         }
 
         return response.data;
-    }
+    })
 }
