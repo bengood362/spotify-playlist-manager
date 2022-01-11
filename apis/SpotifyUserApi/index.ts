@@ -63,7 +63,7 @@ export default class SpotifyUserApi {
 
     readonly getUserPlaylists = this.refreshTokenRetryExceptionFilter(async (
         userId: string,
-        limit: number,
+        limit = 5,
         offset = 0,
     ): Promise<GetPlaylistsResponse> => {
         const queryString = qs.stringify({
@@ -89,14 +89,8 @@ export default class SpotifyUserApi {
 
     readonly getPlaylist = this.refreshTokenRetryExceptionFilter(async (
         playlistId: string,
-        limit: number,
-        offset = 0,
     ): Promise<GetPlaylistsResponse> => {
-        const queryString = qs.stringify({
-            limit,
-            offset,
-        });
-        const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}?${queryString}`;
+        const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}`;
 
         const response = await axios.get<GetPlaylistsParams, AxiosResponse<GetPlaylistsResponse>>(apiUrl, {
             headers: {

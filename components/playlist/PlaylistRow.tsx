@@ -7,6 +7,9 @@ export const PlaylistRow = (props: PlaylistRowProps) => {
     return (
         <TableRow selected={selected} onClick={() => onClick(playlist)} key={`${playlist.type}-${playlist.id}`}>
             <TableCell>
+                {playlist.owner.display_name}
+            </TableCell>
+            <TableCell>
                 {playlist.name}
             </TableCell>
         </TableRow>

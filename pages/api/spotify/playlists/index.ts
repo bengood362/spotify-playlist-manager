@@ -1,17 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import SpotifyUserApi from '../../../../../../apis/SpotifyUserApi';
-import type { GetPlaylistTracksResponse } from '../../../../../../apis/SpotifyUserApi/_types/tracks/GetPlaylistTracksResponse';
-import { parseAuthorization } from '../../../../../../server/request/header/parseAuthorization';
-import { parseFiniteNumber } from '../../../../../../server/request/queryparam/parseFiniteNumber';
+import SpotifyUserApi from '../../../../apis/SpotifyUserApi';
+import { GetPlaylistsResponse } from '../../../../apis/SpotifyUserApi/_types/playlists/GetPlaylistsResponse';
+import { parseAuthorization } from '../../../../server/request/header/parseAuthorization';
+import { parseFiniteNumber } from '../../../../server/request/queryparam/parseFiniteNumber';
 
-export type GetTrackResponse = GetPlaylistTracksResponse;
 type ErrorResponse = {
     message: string,
 }
 
 export default async function handler(
     req: NextApiRequest,
-    res: NextApiResponse<GetTrackResponse | ErrorResponse>,
+    res: NextApiResponse<GetPlaylistsResponse | ErrorResponse>,
 ) {
     try {
         if (
@@ -31,17 +30,18 @@ export default async function handler(
 
         const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
 
-        const playlistId = req.query['pid'];
-        const limit = parseFiniteNumber(req.query['limit'], 5);
-        const offset = parseFiniteNumber(req.query['offset'], 0);
+        const currentUserProfile = await spotifyUserApi.getCurrentUserProfile();
 
-        if (typeof playlistId !== 'string' || offset === null) {
+        const offset = parseFiniteNumber(req.query['offset'], 0);
+        const limit = parseFiniteNumber(req.query['limit'], 5);
+
+        if (limit === null || offset === null) {
             throw new Error('bad_request');
         }
 
-        const playlistItems = await spotifyUserApi.getPlaylistItems(playlistId, limit, offset);
+        const userPlaylistsData = await spotifyUserApi.getUserPlaylists(currentUserProfile.id, limit, offset);
 
-        res.status(200).json(playlistItems);
+        res.status(200).json(userPlaylistsData);
     } catch (err) {
         console.error('[E]:/api/oauth2/spotify/callback', err);
 

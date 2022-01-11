@@ -1,3 +1,4 @@
+import qs from 'qs';
 import React, { useState, useCallback, useEffect } from 'react';
 import type { NextPage, NextPageContext } from 'next';
 import Head from 'next/head';
@@ -16,6 +17,8 @@ import SpotifyAuthApi from '../../apis/SpotifyAuthApi';
 import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 import { parseSessionId } from '../../server/request/header/parseSessionId';
 import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
+import { Button } from '@mui/material';
+import { GetPlaylistsResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistsResponse';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,
@@ -58,14 +61,14 @@ const fetchPageWithRetry = (
 
     try {
         const currentProfile = await spotifyUserApi.getCurrentUserProfile();
-        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id, 5);
+        const getPlaylistsResponse = await spotifyUserApi.getUserPlaylists(currentProfile.id);
 
         return {
             props: {
                 spotifyUserId: currentProfile.id,
-                playlists: getPlaylistsResponse.items.filter((playlist) => playlist.owner.id === currentProfile.id),
-                playlistsTotalPages: getPlaylistsResponse.total,
-                playlistsOffset: getPlaylistsResponse.offset,
+                // playlists: getPlaylistsResponse.items.filter((playlist) => playlist.owner.id === currentProfile.id), // TODO: if only get owner userId -> doesn't work for pagination
+                playlists: getPlaylistsResponse.items,
+                playlistsTotalCount: getPlaylistsResponse.total,
             }, // will be passed to the page component as props
         };
     } catch (err) {
@@ -138,6 +141,15 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
     const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
     const [tracks, setTracks] = useState<Track[]>([]);
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+
+    useEffect(() => {
+        if(isErrorProps(props)){
+            return;
+        }
+
+        setPlaylists(props.playlists);
+    }, [setPlaylists]);
 
     const handlePlaylistRowClick = useCallback(async (playlist: Playlist) => {
         setSelectedPlaylist(playlist);
@@ -146,6 +158,23 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     const handleTrackRowClick = useCallback((track: Track) => {
         console.log('Home:handleTrackRowClick:track', track);
     }, []);
+
+    const handlePlaylistNextPageButtonClick = useCallback(async () => {
+        console.log('Home:handlePlaylistNextPageButtonClick');
+
+        const querystring = qs.stringify({
+            offset: playlists.length,
+            limit: 5,
+        })
+
+        const getPlaylistsResponse = await axios.get<GetPlaylistsResponse>(`/api/spotify/playlists?${querystring}`);
+
+        if (getPlaylistsResponse.status === 200) {
+            console.log('getPlaylistsResponse', playlists, getPlaylistsResponse.data);
+
+            setPlaylists([...playlists, ...getPlaylistsResponse.data.items]);
+        }
+    }, [playlists, setPlaylists]);
 
     useEffect(() => {
         (async () => {
@@ -169,9 +198,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
 
     const {
         spotifyUserId,
-        playlists,
-        playlistsTotalPages,
-        playlistsOffset,
+        playlistsTotalCount,
     } = props;
 
     return (
@@ -185,14 +212,20 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             <main className={styles.main}>
                 <h3>
                     Hello {spotifyUserId}
-                    <p>{playlistsTotalPages}</p>
-                    <p>{playlistsOffset}</p>
+                    <p>{playlistsTotalCount}</p>
                 </h3>
                 <PlaylistTable
                     selectedPlaylist={selectedPlaylist}
                     onPlaylistRowClick={handlePlaylistRowClick}
                     playlists={playlists}
                 />
+                {playlists.length < playlistsTotalCount ? (
+                    <React.Fragment>
+                        <Button onClick={() => handlePlaylistNextPageButtonClick()}>
+                            next
+                        </Button>
+                    </React.Fragment>
+                ) : null}
 
                 {selectedPlaylist !== null ? (
                     <React.Fragment>
@@ -226,6 +259,5 @@ export default Home;
 type SpotifyPlaylistCloneProps = ErrorProps | {
     spotifyUserId: string;
     playlists: Playlist[];
-    playlistsTotalPages: number,
-    playlistsOffset: number,
+    playlistsTotalCount: number,
 }
