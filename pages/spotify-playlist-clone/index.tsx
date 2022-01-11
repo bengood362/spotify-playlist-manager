@@ -142,6 +142,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
     const [tracks, setTracks] = useState<Track[]>([]);
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [tracksTotalCount, setTracksTotalCount] = useState<number>(0);
 
     useEffect(() => {
         if(isErrorProps(props)){
@@ -164,17 +165,32 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
 
         const querystring = qs.stringify({
             offset: playlists.length,
-            limit: 5,
         })
 
         const getPlaylistsResponse = await axios.get<GetPlaylistsResponse>(`/api/spotify/playlists?${querystring}`);
 
         if (getPlaylistsResponse.status === 200) {
-            console.log('getPlaylistsResponse', playlists, getPlaylistsResponse.data);
-
             setPlaylists([...playlists, ...getPlaylistsResponse.data.items]);
         }
     }, [playlists, setPlaylists]);
+
+    const handleTracksNextPageButtonClick = useCallback(async () => {
+        console.log('Home:handlePlaylistNextPageButtonClick');
+
+        if (selectedPlaylist === null) {
+            return;
+        }
+
+        const querystring = qs.stringify({
+            offset: tracks.length,
+        })
+
+        const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${selectedPlaylist.id}/tracks?${querystring}`);
+
+        if (getTracksResponse.status === 200) {
+            setTracks([...tracks, ...getTracksResponse.data.items.map(({track}) => (track))]);
+        }
+    }, [selectedPlaylist, tracks, setTracks]);
 
     useEffect(() => {
         (async () => {
@@ -187,10 +203,11 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             if (getTracksResponse.status === 200) {
                 console.log('[I]tracksResponse', getTracksResponse.data);
 
+                setTracksTotalCount(getTracksResponse.data.total);
                 setTracks(getTracksResponse.data.items.map(({ track }) => (track)));
             }
         })();
-    }, [selectedPlaylist]);
+    }, [selectedPlaylist, setTracksTotalCount]);
 
     if (isErrorProps(props)) {
         return <pre>{props.error}</pre>;
@@ -212,7 +229,6 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             <main className={styles.main}>
                 <h3>
                     Hello {spotifyUserId}
-                    <p>{playlistsTotalCount}</p>
                 </h3>
                 <PlaylistTable
                     selectedPlaylist={selectedPlaylist}
@@ -222,7 +238,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                 {playlists.length < playlistsTotalCount ? (
                     <React.Fragment>
                         <Button onClick={() => handlePlaylistNextPageButtonClick()}>
-                            next
+                            more playlists
                         </Button>
                     </React.Fragment>
                 ) : null}
@@ -234,6 +250,14 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                             tracks={tracks}
                             onTrackRowClick={handleTrackRowClick}
                         />
+
+                        {tracks.length < tracksTotalCount ? (
+                            <React.Fragment>
+                                <Button onClick={() => handleTracksNextPageButtonClick()}>
+                                    more tracks
+                                </Button>
+                            </React.Fragment>
+                        ) : null}
                     </React.Fragment>
                 ) : null}
             </main>

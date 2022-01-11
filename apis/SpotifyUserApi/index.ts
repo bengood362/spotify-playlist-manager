@@ -63,7 +63,7 @@ export default class SpotifyUserApi {
 
     readonly getUserPlaylists = this.refreshTokenRetryExceptionFilter(async (
         userId: string,
-        limit = 5,
+        limit = 50,
         offset = 0,
     ): Promise<GetPlaylistsResponse> => {
         const queryString = qs.stringify({
