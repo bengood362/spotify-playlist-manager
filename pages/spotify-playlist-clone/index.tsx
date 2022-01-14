@@ -21,6 +21,7 @@ import { parseSessionId } from '../../server/request/header/parseSessionId';
 import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
 import { Button } from '@mui/material';
 import { GetPlaylistsResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistsResponse';
+import { useFetchPlaylistItems } from '../../client/hooks/useFetchPlaylistItems';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,
@@ -140,13 +141,13 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 }
 
 const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+
     const [selectedFromPlaylist, setSelectedFromPlaylist] = useState<Playlist | null>(null);
     const [selectedToPlaylist, setSelectedToPlaylist] = useState<Playlist | null>(null);
-    const [fromTracks, setFromTracks] = useState<Track[]>([]);
-    const [toTracks, setToTracks] = useState<Track[]>([]);
-    const [playlists, setPlaylists] = useState<Playlist[]>([]);
-    const [fromTracksTotalCount, setFromTracksTotalCount] = useState<number>(0);
-    const [toTracksTotalCount, setToTracksTotalCount] = useState<number>(0);
+    const [fromTracks, fromTracksTotalCount, handleFromTracksNextPageButtonClick] = useFetchPlaylistItems(selectedFromPlaylist)
+    const [toTracks, toTracksTotalCount, handleToTracksNextPageButtonClick] = useFetchPlaylistItems(selectedToPlaylist)
+
 
     useEffect(() => {
         if(isErrorProps(props)){
@@ -182,79 +183,9 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         }
     }, [playlists, setPlaylists]);
 
-    const handleFromTracksNextPageButtonClick = useCallback(async () => {
-        console.log('[I]/pages/spotify-playlist-clone:handleFromTracksNextPageButtonClick');
-
-        if (selectedFromPlaylist === null) {
-            return;
-        }
-
-        const querystring = qs.stringify({
-            offset: fromTracks.length,
-        })
-
-        const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${selectedFromPlaylist.id}/tracks?${querystring}`);
-
-        if (getTracksResponse.status === 200) {
-            setFromTracks([...fromTracks, ...getTracksResponse.data.items.map(({track}) => (track))]);
-        }
-    }, [selectedFromPlaylist, fromTracks, setFromTracks]);
-
-    const handleToTracksNextPageButtonClick = useCallback(async () => {
-        console.log('[I]/pages/spotify-playlist-clone:handleToTracksNextPageButtonClick');
-
-        if (selectedToPlaylist === null) {
-            return;
-        }
-
-        const querystring = qs.stringify({
-            offset: fromTracks.length,
-        })
-
-        const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks?${querystring}`);
-
-        if (getTracksResponse.status === 200) {
-            setToTracks([...toTracks, ...getTracksResponse.data.items.map(({track}) => (track))]);
-        }
-    }, [selectedToPlaylist, toTracks, setToTracks]);
-
     const handleSyncButtonClick = useCallback(() => {
         console.log('[I]/pages/spotify-playlist-clone:handleSyncButtonClick');
     }, []);
-
-    useEffect(() => {
-        (async () => {
-            if (!selectedFromPlaylist) {
-                return;
-            }
-
-            const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${selectedFromPlaylist.id}/tracks`);
-
-            if (getTracksResponse.status === 200) {
-                console.log('[I]tracksResponse', getTracksResponse.data);
-
-                setFromTracksTotalCount(getTracksResponse.data.total);
-                setFromTracks(getTracksResponse.data.items.map(({ track }) => (track)));
-            }
-        })();
-    }, [selectedFromPlaylist, setFromTracksTotalCount, setFromTracks]);
-
-    useEffect(() => {
-        (async () => {
-            if (!selectedToPlaylist) {
-                return;
-            }
-
-            const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks`);
-
-            if (getTracksResponse.status === 200) {
-                console.log('[I]tracksResponse', getTracksResponse.data);
-
-                setToTracksTotalCount(getTracksResponse.data.total);
-                setToTracks(getTracksResponse.data.items.map(({ track }) => (track)));
-            }
-        })();
-    }, [selectedToPlaylist, setFromTracksTotalCount, setToTracks]);
 
     if (isErrorProps(props)) {
         return <pre>{props.error}</pre>;
@@ -277,8 +208,8 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                 <h3>
                     Hello {spotifyUserId}
                 </h3>
-                <div className={pageStyles.playlistSectionContainer}>
-                    <div className={pageStyles.playlistTableSectionContainer}>
+                <div className={pageStyles.playlistSection}>
+                    <div className={pageStyles.playlistTableSection}>
                         <div className={pageStyles.playlistContainer}>
                             <h4>
                                 From playlist
@@ -319,7 +250,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                 <div className={pageStyles.horizontalDivider} />
 
                 {/* TODO: merge two table to achieve same height */}
-                <div className={pageStyles.trackTableSectionContainer}>
+                <div className={pageStyles.trackTableSection}>
                     <div className={pageStyles.trackTableContainer}>
                         <TrackTable
                             tracks={selectedFromPlaylist === null ? [] : fromTracks}
@@ -359,9 +290,11 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                     </div>
                 </div>
 
-                <Button onClick={() => handleSyncButtonClick()}>
-                    Sync
-                </Button>
+                <div className={pageStyles.actionButtonSection}>
+                    <Button variant="contained" size="medium" onClick={() => handleSyncButtonClick()}>
+                        Sync
+                    </Button>
+                </div>
             </main>
 
             <footer className={homeStyles.footer}>
