@@ -1,0 +1,34 @@
+.pageContainer {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+}
+.playlistSectionContainer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+.playlistTableSectionContainer {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+}
+.playlistContainer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+.verticalDivider {
+    position: relative;
+    align-self: stretch;
+    width: 1px;
+    background-color: black;
+    margin: 0 16px;
+}
+.horizontalDivider {
+    position: relative;
+    width: 100%;
+    height: 1px;
+    margin: 24px 0;
+    background: black;
+}
