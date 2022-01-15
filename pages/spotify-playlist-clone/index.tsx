@@ -158,12 +158,20 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [setPlaylists]);
 
     const handleFromPlaylistRowClick = useCallback(async (playlist: Playlist) => {
-        setSelectedFromPlaylist(playlist);
-    }, [setSelectedFromPlaylist]);
+        if (playlist === selectedFromPlaylist) {
+            setSelectedFromPlaylist(null);
+        } else {
+            setSelectedFromPlaylist(playlist);
+        }
+    }, [selectedFromPlaylist, setSelectedFromPlaylist]);
 
     const handleToPlaylistRowClick = useCallback(async (playlist: Playlist) => {
-        setSelectedToPlaylist(playlist);
-    }, [setSelectedToPlaylist]);
+        if (playlist === selectedToPlaylist) {
+            setSelectedToPlaylist(null);
+        } else {
+            setSelectedToPlaylist(playlist);
+        }
+    }, [selectedToPlaylist, setSelectedToPlaylist]);
 
     const handleTrackRowClick = useCallback((track: Track) => {
         console.log('[I]/pages/spotify-playlist-clone:handleTrackRowClick:track', track);
@@ -291,7 +299,12 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                 </div>
 
                 <div className={pageStyles.actionButtonSection}>
-                    <Button variant="contained" size="medium" onClick={() => handleSyncButtonClick()}>
+                    <Button
+                        disabled={selectedFromPlaylist === null || selectedToPlaylist === null}
+                        variant="contained"
+                        size="medium"
+                        onClick={() => handleSyncButtonClick()}
+                    >
                         Sync
                     </Button>
                 </div>

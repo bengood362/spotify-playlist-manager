@@ -5,7 +5,7 @@ export const PlaylistRow = (props: PlaylistRowProps) => {
     const { playlist, selected, onClick } = props;
 
     return (
-        <TableRow selected={selected} onClick={() => onClick(playlist)} key={`${playlist.type}-${playlist.id}`}>
+        <TableRow hover={true} selected={selected} onClick={() => onClick(playlist)} key={`${playlist.type}-${playlist.id}`}>
             <TableCell>
                 {playlist.owner.display_name}
             </TableCell>

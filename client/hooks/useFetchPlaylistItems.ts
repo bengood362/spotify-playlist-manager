@@ -30,6 +30,9 @@ export const useFetchPlaylistItems = (selectedPlaylist: Playlist | null): [Track
     useEffect(() => {
         (async () => {
             if (!selectedPlaylist) {
+                setTracksTotalCount(0);
+                setTracks([]);
+
                 return;
             }
 
