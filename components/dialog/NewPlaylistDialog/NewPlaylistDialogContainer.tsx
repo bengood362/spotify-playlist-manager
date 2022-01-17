@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { ChangeEvent, useEffect, useCallback, useState } from 'react';
 import { NewPlaylistDialogView } from './NewPlaylistDialogView';
 
@@ -27,17 +28,39 @@ export const NewPlaylistDialogContainer = (props: NewPlaylistDialogContainerProp
         }
     }, [name, setIsValidForm]);
 
-    const handleConfirmClick = useCallback(() => {
-        console.log('NewPlaylistDialogContainer.handleConfirmClick', {
-            name,
-            description,
-        });
+    const createNewPlaylist = useCallback(async (name: string, description: string) => {
+        try {
+            const response = await axios.post('/api/spotify/playlists', { name, description }, { headers: { 'Content-Type': 'application/json' } });
 
-        if (!isValidForm) {
-            return;
+            if (response.status !== 201) {
+                throw response.data;
+            }
+
+            return response.data;
+        } catch (err) {
+            console.log('[E]NewPlaylistDialogContainer.createNewPlaylist', err);
+
+            throw err;
         }
+    }, []);
 
-        dismissDialog();
+    const handleConfirmClick = useCallback(async () => {
+        try {
+            console.log('NewPlaylistDialogContainer.handleConfirmClick', {
+                name,
+                description,
+            });
+
+            if (!isValidForm) {
+                return;
+            }
+
+            await createNewPlaylist(name, description);
+
+            dismissDialog();
+        } catch (err) {
+            console.error('[E]NewPlaylistDialogContainer.handleConfirmClick', err);
+        }
     }, [name, description, dismissDialog, isValidForm]);
 
     const handleNameChange = useCallback((event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {

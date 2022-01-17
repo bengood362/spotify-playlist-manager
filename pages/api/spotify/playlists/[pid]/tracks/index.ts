@@ -31,11 +31,11 @@ export default async function handler(
 
         const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
 
-        const playlistId = req.query['pid'];
+        const playlistId = typeof req.query['pid'] === 'string' ? req.query['pid'] : null;
         const limit = parseFiniteNumber(req.query['limit'], 5);
         const offset = parseFiniteNumber(req.query['offset'], 0);
 
-        if (typeof playlistId !== 'string' || offset === null) {
+        if (playlistId === null || offset === null) {
             throw new Error('bad_request');
         }
 

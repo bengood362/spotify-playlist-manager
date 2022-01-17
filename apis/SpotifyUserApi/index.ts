@@ -56,7 +56,7 @@ export default class SpotifyUserApi {
             },
         });
 
-        if (response.status !== 200) {
+        if (response.status !== 201) {
             console.error('[E]SpotifyUserApi:createPlaylist', response.data);
 
             throw new Error('failed_to_create_playlist');
