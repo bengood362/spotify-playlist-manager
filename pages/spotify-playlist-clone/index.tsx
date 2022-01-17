@@ -1,27 +1,32 @@
+import axios from 'axios';
 import qs from 'qs';
 import React, { useState, useCallback, useEffect } from 'react';
 import type { NextPage, NextPageContext } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
+
 import SpotifyUserApi from '../../apis/SpotifyUserApi';
-import { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
-import arrowStyles from '../../styles/Arrow.module.css';
+import SpotifyAuthApi from '../../apis/SpotifyAuthApi';
+import type { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
+import type { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
+import type { GetPlaylistsResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistsResponse';
+
+import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
+
 import homeStyles from '../../styles/Home.module.css';
 import pageStyles from './index.module.css';
+
+import { Button } from '@mui/material';
 import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
 import { TrackTable } from '../../components/track/TrackTable';
+import { NewPlaylistDialogContainer } from '../../components/dialog/NewPlaylistDialog/NewPlaylistDialogContainer';
+
+import { useFetchPlaylistItems } from '../../client/hooks/useFetchPlaylistItems';
+
 import { parseAuthorization } from '../../server/request/header/parseAuthorization';
-import { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
-import axios from 'axios';
-import { GetTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
-import SpotifyAuthApi from '../../apis/SpotifyAuthApi';
-import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 import { parseSessionId } from '../../server/request/header/parseSessionId';
 import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
-import { Button } from '@mui/material';
-import { GetPlaylistsResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistsResponse';
-import { useFetchPlaylistItems } from '../../client/hooks/useFetchPlaylistItems';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,
@@ -141,6 +146,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 }
 
 const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
+    const [shouldShowNewPlaylistDialog, setShouldShowNewPlaylistDialog] = useState<boolean>(false);
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
 
     const [selectedFromPlaylist, setSelectedFromPlaylist] = useState<Playlist | null>(null);
@@ -157,7 +163,13 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         setPlaylists(props.playlists);
     }, [setPlaylists]);
 
+    const handleDismissNewPlaylistDialog = useCallback(() => {
+        setShouldShowNewPlaylistDialog(false);
+    }, [setShouldShowNewPlaylistDialog]);
+
     const handleFromPlaylistRowClick = useCallback(async (playlist: Playlist) => {
+        console.log('[I]/pages/spotify-playlist-clone:handleFromPlaylistRowClick', playlist)
+
         if (playlist === selectedFromPlaylist) {
             setSelectedFromPlaylist(null);
         } else {
@@ -166,6 +178,8 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [selectedFromPlaylist, setSelectedFromPlaylist]);
 
     const handleToPlaylistRowClick = useCallback(async (playlist: Playlist) => {
+        console.log('[I]/pages/spotify-playlist-clone:handleToPlaylistRowClick', playlist)
+
         if (playlist === selectedToPlaylist) {
             setSelectedToPlaylist(null);
         } else {
@@ -176,6 +190,12 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     const handleTrackRowClick = useCallback((track: Track) => {
         console.log('[I]/pages/spotify-playlist-clone:handleTrackRowClick:track', track);
     }, []);
+
+    const handleNewPlaylistButtonClick = useCallback(() => {
+        console.log('[I]/pages/spotify-playlist-clone:handleNewPlaylistButtonClick');
+
+        setShouldShowNewPlaylistDialog(true);
+    }, [setShouldShowNewPlaylistDialog]);
 
     const handlePlaylistNextPageButtonClick = useCallback(async () => {
         console.log('[I]/pages/spotify-playlist-clone:handlePlaylistNextPageButtonClick');
@@ -232,9 +252,14 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                         <div className={pageStyles.verticalDivider} />
 
                         <div className={pageStyles.playlistContainer}>
-                            <h4>
-                                To playlist
-                            </h4>
+                            <div className={pageStyles.playlistTitleContainer}>
+                                <h4>
+                                    To playlist
+                                </h4>
+                                <Button size="small" sx={{ marginLeft: 'auto'}} onClick={handleNewPlaylistButtonClick}>
+                                    +
+                                </Button>
+                            </div>
                             <PlaylistTable
                                 selectedPlaylist={selectedToPlaylist}
                                 onPlaylistRowClick={handleToPlaylistRowClick}
@@ -248,7 +273,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                         <React.Fragment>
                             <div className={pageStyles.horizontalDivider} />
 
-                            <Button onClick={() => handlePlaylistNextPageButtonClick()}>
+                            <Button onClick={handlePlaylistNextPageButtonClick}>
                                 more playlists
                             </Button>
                         </React.Fragment>
@@ -265,12 +290,11 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                             onTrackRowClick={handleTrackRowClick}
                         />
 
-
                         {selectedFromPlaylist !== null && fromTracks.length < fromTracksTotalCount ? (
                             <React.Fragment>
                                 <div className={pageStyles.horizontalDivider} />
 
-                                <Button onClick={() => handleFromTracksNextPageButtonClick()}>
+                                <Button onClick={handleFromTracksNextPageButtonClick}>
                                     more tracks
                                 </Button>
                             </React.Fragment>
@@ -285,12 +309,11 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                             onTrackRowClick={handleTrackRowClick}
                         />
 
-
                         {selectedToPlaylist !== null && toTracks.length < toTracksTotalCount ? (
                             <React.Fragment>
                                 <div className={pageStyles.horizontalDivider} />
 
-                                <Button onClick={() => handleToTracksNextPageButtonClick()}>
+                                <Button onClick={handleToTracksNextPageButtonClick}>
                                     more tracks
                                 </Button>
                             </React.Fragment>
@@ -303,11 +326,13 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                         disabled={selectedFromPlaylist === null || selectedToPlaylist === null}
                         variant="contained"
                         size="medium"
-                        onClick={() => handleSyncButtonClick()}
+                        onClick={handleSyncButtonClick}
                     >
                         Sync
                     </Button>
                 </div>
+
+                <NewPlaylistDialogContainer dismissDialog={handleDismissNewPlaylistDialog} open={shouldShowNewPlaylistDialog} />
             </main>
 
             <footer className={homeStyles.footer}>

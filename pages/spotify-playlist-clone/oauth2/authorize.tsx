@@ -8,6 +8,7 @@ import styles from '../../../styles/Home.module.css';
 export async function getServerSideProps(context: NextPageContext): Promise<GetServerSidePropsResult<HomePageProps>> {
     try {
         // setup authorize url from config
+        // Scopes reference: https://developer.spotify.com/documentation/general/guides/authorization/scopes/
         const clientId = process.env.SPOTIFY_CLIENT_ID;
         const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public'].join(' ');
         const host = 'https://accounts.spotify.com';

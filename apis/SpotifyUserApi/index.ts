@@ -3,6 +3,8 @@ import axios, { AxiosResponse } from 'axios';
 import qs from 'qs';
 import { GetMeParams } from './_types/me/GetMeParams';
 import { GetMeResponse } from './_types/me/GetMeResponse';
+import { PostPlaylistBody } from './_types/playlists/PostPlaylistBody';
+import { PostPlaylistResponse } from './_types/playlists/PostPlaylistResponse';
 import { GetPlaylistsParams } from './_types/playlists/GetPlaylistsParams';
 import { GetPlaylistsResponse } from './_types/playlists/GetPlaylistsResponse';
 import { GetPlaylistTracksParams } from './_types/tracks/GetPlaylistTracksParams';
@@ -42,6 +44,27 @@ export default class SpotifyUserApi {
         }
     }
 
+    readonly createPlaylist = this.refreshTokenRetryExceptionFilter(async (
+        userId: string,
+        playlistConfiguration: PostPlaylistBody,
+    ): Promise<PostPlaylistResponse> => {
+        const apiUrl = `https://api.spotify.com/v1/users/${userId}/playlists`;
+
+        const response = await axios.post<PostPlaylistResponse, AxiosResponse<PostPlaylistResponse>, PostPlaylistBody>(apiUrl, playlistConfiguration, {
+            headers: {
+                Authorization: `${this.tokenType} ${this.accessToken}`,
+            },
+        });
+
+        if (response.status !== 200) {
+            console.error('[E]SpotifyUserApi:createPlaylist', response.data);
+
+            throw new Error('failed_to_create_playlist');
+        }
+
+        return response.data;
+    })
+
     // https://developer.spotify.com/documentation/web-api/reference/#/operations/get-current-users-profile
     readonly getCurrentUserProfile = this.refreshTokenRetryExceptionFilter(async (): Promise<GetMeResponse> => {
         const apiUrl = 'https://api.spotify.com/v1/me';
@@ -55,7 +78,7 @@ export default class SpotifyUserApi {
         if (response.status !== 200) {
             console.error('[E]SpotifyUserApi:getCurrentUserProfile', response.data);
 
-            throw new Error('failed_to_fetch_token');
+            throw new Error('failed_to_fetch_user_profile');
         }
 
         return response.data;

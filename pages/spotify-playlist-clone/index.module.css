@@ -32,6 +32,10 @@
     display: flex;
     flex-direction: column;
 }
+.playlistTitleContainer {
+    display: flex;
+    flex-direction: row;
+}
 .actionButtonSection {
     width: 100%;
     position: relative;

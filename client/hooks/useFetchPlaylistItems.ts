@@ -39,8 +39,6 @@ export const useFetchPlaylistItems = (selectedPlaylist: Playlist | null): [Track
             const getTracksResponse = await axios.get<GetTrackResponse>(`/api/spotify/playlists/${selectedPlaylist.id}/tracks`);
 
             if (getTracksResponse.status === 200) {
-                console.log('[I]tracksResponse', getTracksResponse.data);
-
                 setTracksTotalCount(getTracksResponse.data.total);
                 setTracks(getTracksResponse.data.items.map(({ track }) => (track)));
             }
