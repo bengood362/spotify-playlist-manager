@@ -9,6 +9,8 @@ import { GetPlaylistsParams } from './_types/playlists/GetPlaylistsParams';
 import { GetPlaylistsResponse } from './_types/playlists/GetPlaylistsResponse';
 import { GetPlaylistTracksParams } from './_types/tracks/GetPlaylistTracksParams';
 import { GetPlaylistTracksResponse } from './_types/tracks/GetPlaylistTracksResponse';
+import { AddPlaylistItemsBody } from './_types/playlists/tracks/AddPlaylistItemsBody';
+import { AddPlaylistItemsResponse } from './_types/playlists/tracks/AddPlaylistItemsResponse';
 
 export default class SpotifyUserApi {
     // requires user oauth
@@ -60,6 +62,27 @@ export default class SpotifyUserApi {
             console.error('[E]SpotifyUserApi:createPlaylist', response.data);
 
             throw new Error('failed_to_create_playlist');
+        }
+
+        return response.data;
+    })
+
+    readonly addItemsToPlaylist = this.refreshTokenRetryExceptionFilter(async (
+        playlistId: string,
+        playlistItemDescriptor: AddPlaylistItemsBody,
+    ): Promise<AddPlaylistItemsResponse> => {
+        const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
+
+        const response = await axios.post<AddPlaylistItemsResponse, AxiosResponse<AddPlaylistItemsResponse>, AddPlaylistItemsBody>(apiUrl, playlistItemDescriptor, {
+            headers: {
+                Authorization: `${this.tokenType} ${this.accessToken}`,
+            },
+        });
+
+        if (response.status !== 201) {
+            console.error('[E]SpotifyUserApi:addItemsToPlaylist', response.data);
+
+            throw new Error('failed_to_add_items_to_playlist');
         }
 
         return response.data;
