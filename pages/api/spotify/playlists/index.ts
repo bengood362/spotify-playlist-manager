@@ -43,6 +43,11 @@ async function get(
     res.status(200).json(userPlaylistsData);
 }
 
+export type PostPlaylistBody = {
+    name: string,
+    description: string,
+}
+
 async function post(
     req: NextApiRequest,
     res: NextApiResponse<PostPlaylistResponse | ErrorResponse>,

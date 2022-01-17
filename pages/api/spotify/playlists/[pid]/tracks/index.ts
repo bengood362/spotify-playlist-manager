@@ -48,6 +48,7 @@ async function put(
         throw new Error('unprocessable_entity');
     }
 
+    // TODO: uris are limited to length = 100
     const addItemsToPlaylistResponse = await spotifyUserApi.addItemsToPlaylist(playlistId, { uris, position: 0 });
 
     res.status(201).json(addItemsToPlaylistResponse);

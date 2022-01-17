@@ -27,6 +27,7 @@ import { useFetchPlaylistItems } from '../../client/hooks/useFetchPlaylistItems'
 import { parseAuthorization } from '../../server/request/header/parseAuthorization';
 import { parseSessionId } from '../../server/request/header/parseSessionId';
 import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
+import { PostPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/PostPlaylistResponse';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,
@@ -163,6 +164,14 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         setPlaylists(props.playlists);
     }, [setPlaylists]);
 
+    const handleCreateNewPlaylistSuccess = useCallback((result: PostPlaylistResponse) => {
+        console.log('[I]/pages/spotify-playlist-clone:handleCreateNewPlaylistSuccess', result);
+
+        setPlaylists([result, ...playlists]);
+    }, [playlists, setPlaylists]);
+    const handleCreateNewPlaylistError = useCallback((err: unknown) => {
+        console.error('[E]/pages/spotify-playlist-clone:handleCreateNewPlaylistError', err);
+    }, []);
     const handleDismissNewPlaylistDialog = useCallback(() => {
         setShouldShowNewPlaylistDialog(false);
     }, [setShouldShowNewPlaylistDialog]);
@@ -211,9 +220,30 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         }
     }, [playlists, setPlaylists]);
 
-    const handleSyncButtonClick = useCallback(() => {
+    const handleSyncButtonClick = useCallback(async () => {
         console.log('[I]/pages/spotify-playlist-clone:handleSyncButtonClick');
-    }, []);
+
+        if (selectedFromPlaylist === null || selectedToPlaylist === null) {
+            return;
+        }
+
+        if (toTracks.length > 0) {
+            // TODO: show dialog for append/ overwrite/ cancel
+        } else {
+            const uris = fromTracks.map(({ uri }) => uri);
+
+            const response = await axios.put(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks`, { uris }, {
+                headers: { 'Content-Type': 'application/json' },
+            })
+
+            if (response.status !== 201) {
+                throw response.data;
+            }
+
+            return response.data;
+        }
+
+    }, [selectedFromPlaylist, selectedToPlaylist, fromTracks, toTracks]);
 
     if (isErrorProps(props)) {
         return <pre>{props.error}</pre>;
@@ -332,7 +362,12 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                     </Button>
                 </div>
 
-                <NewPlaylistDialogContainer dismissDialog={handleDismissNewPlaylistDialog} open={shouldShowNewPlaylistDialog} />
+                <NewPlaylistDialogContainer
+                    onSuccess={handleCreateNewPlaylistSuccess}
+                    onError={handleCreateNewPlaylistError}
+                    dismissDialog={handleDismissNewPlaylistDialog}
+                    open={shouldShowNewPlaylistDialog}
+                />
             </main>
 
             <footer className={homeStyles.footer}>

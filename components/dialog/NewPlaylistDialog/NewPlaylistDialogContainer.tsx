@@ -1,9 +1,11 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { ChangeEvent, useEffect, useCallback, useState } from 'react';
+import { PostPlaylistResponse } from '../../../apis/SpotifyUserApi/_types/playlists/PostPlaylistResponse';
+import { PostPlaylistBody } from '../../../pages/api/spotify/playlists';
 import { NewPlaylistDialogView } from './NewPlaylistDialogView';
 
 export const NewPlaylistDialogContainer = (props: NewPlaylistDialogContainerProps) => {
-    const { open, dismissDialog } = props;
+    const { open, dismissDialog, onSuccess, onError } = props;
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -30,7 +32,7 @@ export const NewPlaylistDialogContainer = (props: NewPlaylistDialogContainerProp
 
     const createNewPlaylist = useCallback(async (name: string, description: string) => {
         try {
-            const response = await axios.post('/api/spotify/playlists', { name, description }, { headers: { 'Content-Type': 'application/json' } });
+            const response = await axios.post<PostPlaylistResponse, AxiosResponse<PostPlaylistResponse>, PostPlaylistBody>('/api/spotify/playlists', { name, description }, { headers: { 'Content-Type': 'application/json' } });
 
             if (response.status !== 201) {
                 throw response.data;
@@ -55,13 +57,16 @@ export const NewPlaylistDialogContainer = (props: NewPlaylistDialogContainerProp
                 return;
             }
 
-            await createNewPlaylist(name, description);
+            const result = await createNewPlaylist(name, description);
 
+            onSuccess(result);
             dismissDialog();
         } catch (err) {
             console.error('[E]NewPlaylistDialogContainer.handleConfirmClick', err);
+
+            onError(err);
         }
-    }, [name, description, dismissDialog, isValidForm]);
+    }, [name, description, dismissDialog, isValidForm, onSuccess, onError]);
 
     const handleNameChange = useCallback((event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
         setIsNameDirty(true);
@@ -98,4 +103,6 @@ export const NewPlaylistDialogContainer = (props: NewPlaylistDialogContainerProp
 type NewPlaylistDialogContainerProps = {
     open: boolean;
     dismissDialog: () => void,
+    onSuccess: (response: PostPlaylistResponse) => void,
+    onError: (error: unknown) => void,
 }
