@@ -232,7 +232,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         } else {
             const uris = fromTracks.map(({ uri }) => uri);
 
-            const response = await axios.put(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks`, { uris }, {
+            const response = await axios.post(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks`, { uris, position: 0 }, {
                 headers: { 'Content-Type': 'application/json' },
             })
 

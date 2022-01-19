@@ -11,7 +11,11 @@ import { GetPlaylistTracksParams } from './_types/tracks/GetPlaylistTracksParams
 import { GetPlaylistTracksResponse } from './_types/tracks/GetPlaylistTracksResponse';
 import { AddPlaylistItemsBody } from './_types/playlists/tracks/AddPlaylistItemsBody';
 import { AddPlaylistItemsResponse } from './_types/playlists/tracks/AddPlaylistItemsResponse';
+import { DeletePlaylistItemsBody } from './_types/playlists/tracks/DeletePlaylistItemsBody';
+import { DeletePlaylistItemsResponse } from './_types/playlists/tracks/DeletePlaylistItemsResponse';
 
+// TODO: forward axios http error
+// TODO: access token expiration - retry by apiClient
 export default class SpotifyUserApi {
     // requires user oauth
     constructor(
@@ -19,7 +23,7 @@ export default class SpotifyUserApi {
         private accessToken: string,
     ) {}
 
-    refreshTokenRetryExceptionFilter = <P extends any[], R, F extends (...args: P) => PromiseLike<R>>(func: F) => async (...args: Parameters<F>): Promise<ReturnType<F>> => {
+    invalidAccessTokenExceptionFilter = <P extends any[], R, F extends (...args: P) => PromiseLike<R>>(func: F) => async (...args: Parameters<F>): Promise<ReturnType<F>> => {
         try {
             return await func(...args);
         } catch (err: unknown) {
@@ -46,7 +50,7 @@ export default class SpotifyUserApi {
         }
     }
 
-    readonly createPlaylist = this.refreshTokenRetryExceptionFilter(async (
+    readonly createPlaylist = this.invalidAccessTokenExceptionFilter(async (
         userId: string,
         playlistConfiguration: PostPlaylistBody,
     ): Promise<PostPlaylistResponse> => {
@@ -67,7 +71,7 @@ export default class SpotifyUserApi {
         return response.data;
     })
 
-    readonly addItemsToPlaylist = this.refreshTokenRetryExceptionFilter(async (
+    readonly addItemsToPlaylist = this.invalidAccessTokenExceptionFilter(async (
         playlistId: string,
         playlistItemDescriptor: AddPlaylistItemsBody,
     ): Promise<AddPlaylistItemsResponse> => {
@@ -88,8 +92,33 @@ export default class SpotifyUserApi {
         return response.data;
     })
 
+    readonly deletePlaylistItems = this.invalidAccessTokenExceptionFilter(async (
+        playlistId: string,
+        playlistItemDescriptor: DeletePlaylistItemsBody,
+    ): Promise<DeletePlaylistItemsResponse> => {
+        const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
+
+        const response = await axios.delete<DeletePlaylistItemsResponse, AxiosResponse<DeletePlaylistItemsResponse>, DeletePlaylistItemsBody>(
+            apiUrl,
+            {
+                data: playlistItemDescriptor,
+                headers: {
+                    Authorization: `${this.tokenType} ${this.accessToken}`,
+                },
+            },
+        );
+
+        if (response.status !== 200) {
+            console.error('[E]SpotifyUserApi:deletePlaylistItems', response.data);
+
+            throw new Error('failed_to_delete_items_from_playlist');
+        }
+
+        return response.data;
+    })
+
     // https://developer.spotify.com/documentation/web-api/reference/#/operations/get-current-users-profile
-    readonly getCurrentUserProfile = this.refreshTokenRetryExceptionFilter(async (): Promise<GetMeResponse> => {
+    readonly getCurrentUserProfile = this.invalidAccessTokenExceptionFilter(async (): Promise<GetMeResponse> => {
         const apiUrl = 'https://api.spotify.com/v1/me';
 
         const response = await axios.get<GetMeParams, AxiosResponse<GetMeResponse>>(apiUrl, {
@@ -107,7 +136,7 @@ export default class SpotifyUserApi {
         return response.data;
     })
 
-    readonly getUserPlaylists = this.refreshTokenRetryExceptionFilter(async (
+    readonly getUserPlaylists = this.invalidAccessTokenExceptionFilter(async (
         userId: string,
         limit = 50,
         offset = 0,
@@ -133,7 +162,7 @@ export default class SpotifyUserApi {
         return response.data;
     });
 
-    readonly getPlaylist = this.refreshTokenRetryExceptionFilter(async (
+    readonly getPlaylist = this.invalidAccessTokenExceptionFilter(async (
         playlistId: string,
     ): Promise<GetPlaylistsResponse> => {
         const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}`;
@@ -153,7 +182,7 @@ export default class SpotifyUserApi {
         return response.data;
     });
 
-    readonly getPlaylistItems = this.refreshTokenRetryExceptionFilter(async (
+    readonly getPlaylistItems = this.invalidAccessTokenExceptionFilter(async (
         playlistId: string,
         limit = 5,
         offset = 0,
