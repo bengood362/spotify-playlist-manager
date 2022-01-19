@@ -184,7 +184,7 @@ export default class SpotifyUserApi {
 
     readonly getPlaylistItems = this.invalidAccessTokenExceptionFilter(async (
         playlistId: string,
-        limit = 5,
+        limit = 50,
         offset = 0,
     ): Promise<GetPlaylistTracksResponse> => {
         const params: Partial<GetPlaylistTracksParams> = {

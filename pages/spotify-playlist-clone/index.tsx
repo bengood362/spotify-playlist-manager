@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import qs from 'qs';
 import React, { useState, useCallback, useEffect } from 'react';
 import type { NextPage, NextPageContext } from 'next';
@@ -28,6 +28,8 @@ import { parseAuthorization } from '../../server/request/header/parseAuthorizati
 import { parseSessionId } from '../../server/request/header/parseSessionId';
 import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
 import { PostPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/PostPlaylistResponse';
+import { SyncPlaylistConflictDialogContainer } from '../../components/dialog/SyncPlaylistConflictDialog/SyncPlaylistConflictDialogContainer';
+import { PostTrackBody, PostTrackResponse, PutTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,
@@ -147,7 +149,8 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 }
 
 const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
-    const [shouldShowNewPlaylistDialog, setShouldShowNewPlaylistDialog] = useState<boolean>(false);
+    const [shouldShowNewPlaylistDialog, setShouldShowNewPlaylistDialog] = useState(false);
+    const [shouldShowConflictResolutionDialog, setShouldShowConflictResolutionDialog] = useState(false);
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
 
     const [selectedFromPlaylist, setSelectedFromPlaylist] = useState<Playlist | null>(null);
@@ -164,6 +167,16 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         setPlaylists(props.playlists);
     }, [setPlaylists]);
 
+    const handleSyncPlaylistError = useCallback((err: unknown) => {
+        console.error('[E]/pages/spotify-playlist-clone:handleSyncPlaylistError', err);
+    }, []);
+    const handleAppendPlaylistItemsSuccessful = useCallback((_response: PostTrackResponse) => {
+        console.log('[I]/pages/spotify-playlist-clone:handleAppendPlaylistItemsSuccessful');
+    }, []);
+    const handleOverwritePlaylistItemsSuccessful = useCallback((_response: PutTrackResponse) => {
+        console.log('[I]/pages/spotify-playlist-clone:handleOverwritePlaylistItemsSuccessful');
+    }, []);
+
     const handleCreateNewPlaylistSuccess = useCallback((result: PostPlaylistResponse) => {
         console.log('[I]/pages/spotify-playlist-clone:handleCreateNewPlaylistSuccess', result);
 
@@ -175,6 +188,9 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     const handleDismissNewPlaylistDialog = useCallback(() => {
         setShouldShowNewPlaylistDialog(false);
     }, [setShouldShowNewPlaylistDialog]);
+    const handleDismissSyncPlaylistConflictDialog = useCallback(() => {
+        setShouldShowConflictResolutionDialog(false);
+    }, [setShouldShowConflictResolutionDialog]);
 
     const handleFromPlaylistRowClick = useCallback(async (playlist: Playlist) => {
         console.log('[I]/pages/spotify-playlist-clone:handleFromPlaylistRowClick', playlist)
@@ -229,10 +245,11 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
 
         if (toTracks.length > 0) {
             // TODO: show dialog for append/ overwrite/ cancel
+            setShouldShowConflictResolutionDialog(true);
         } else {
             const uris = fromTracks.map(({ uri }) => uri);
 
-            const response = await axios.post(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks`, { uris, position: 0 }, {
+            const response = await axios.post<PostTrackResponse, AxiosResponse<PostTrackResponse>, PostTrackBody>(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks`, { uris, position: 0 }, {
                 headers: { 'Content-Type': 'application/json' },
             })
 
@@ -243,7 +260,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             return response.data;
         }
 
-    }, [selectedFromPlaylist, selectedToPlaylist, fromTracks, toTracks]);
+    }, [selectedFromPlaylist, selectedToPlaylist, setShouldShowConflictResolutionDialog, fromTracks, toTracks]);
 
     if (isErrorProps(props)) {
         return <pre>{props.error}</pre>;
@@ -363,11 +380,28 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                 </div>
 
                 <NewPlaylistDialogContainer
+                    open={shouldShowNewPlaylistDialog}
+                    dismissDialog={handleDismissNewPlaylistDialog}
+
                     onSuccess={handleCreateNewPlaylistSuccess}
                     onError={handleCreateNewPlaylistError}
-                    dismissDialog={handleDismissNewPlaylistDialog}
-                    open={shouldShowNewPlaylistDialog}
                 />
+
+                {selectedToPlaylist !== null ? (
+                    <SyncPlaylistConflictDialogContainer
+                        open={selectedToPlaylist && shouldShowConflictResolutionDialog}
+                        dismissDialog={handleDismissSyncPlaylistConflictDialog}
+                        // TODO: improve fromUris by putting fromPlaylist
+                        fromUris={fromTracks.map(({ uri }) => (uri))}
+                        toPlaylist={selectedToPlaylist}
+                        toTracks={toTracks}
+                        toTrackTotalCount={toTracksTotalCount}
+
+                        onError={handleSyncPlaylistError}
+                        onSuccessAppend={handleAppendPlaylistItemsSuccessful}
+                        onSuccessOverwrite={handleOverwritePlaylistItemsSuccessful}
+                    />
+                ) : null}
             </main>
 
             <footer className={homeStyles.footer}>

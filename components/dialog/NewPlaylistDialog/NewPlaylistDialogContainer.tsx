@@ -60,11 +60,12 @@ export const NewPlaylistDialogContainer = (props: NewPlaylistDialogContainerProp
             const result = await createNewPlaylist(name, description);
 
             onSuccess(result);
-            dismissDialog();
         } catch (err) {
             console.error('[E]NewPlaylistDialogContainer.handleConfirmClick', err);
 
             onError(err);
+        } finally {
+            dismissDialog();
         }
     }, [name, description, dismissDialog, isValidForm, onSuccess, onError]);
 

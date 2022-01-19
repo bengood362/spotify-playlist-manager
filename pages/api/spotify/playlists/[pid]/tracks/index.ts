@@ -6,7 +6,9 @@ import { parseAuthorization } from '../../../../../../server/request/header/pars
 import { parseFiniteNumber } from '../../../../../../server/request/queryparam/parseFiniteNumber';
 import { parseStringArray } from '../../../../../../server/request/queryparam/parseStringArray';
 
+export type PutTrackBody = { uris: string[] };
 export type PutTrackResponse = { responses: GetPlaylistTracksResponse[] };
+export type PostTrackBody = { uris: string[], position: number };
 export type PostTrackResponse = { responses: GetPlaylistTracksResponse[] };
 export type GetTrackResponse = GetPlaylistTracksResponse;
 type ErrorResponse = {
@@ -109,17 +111,10 @@ async function post(
     const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
     const playlistId = typeof req.query['pid'] === 'string' ? req.query['pid'] : null;
     const uris = parseStringArray(req.body['uris']);
-    const position = parseFiniteNumber(req.body['position'], null);
+    const position = typeof req.body['position'] === 'number' ? req.body['position'] : null;
 
     if (playlistId === null || uris === null || position === null) {
         throw new Error('bad_request');
-    }
-
-    // preflight to check if playlist
-    const getPlaylistResponse = await spotifyUserApi.getPlaylistItems(playlistId);
-
-    if (getPlaylistResponse.total > 0) {
-        throw new Error('unprocessable_entity');
     }
 
     const addItemsToPlaylistResponses = await addPlaylistItemsChunked(playlistId, uris, position, 100)(spotifyUserApi);
@@ -149,7 +144,7 @@ async function get(
     const spotifyUserApi = new SpotifyUserApi(authorization.tokenType, authorization.accessToken);
 
     const playlistId = typeof req.query['pid'] === 'string' ? req.query['pid'] : null;
-    const limit = parseFiniteNumber(req.query['limit'], 5);
+    const limit = parseFiniteNumber(req.query['limit'], 50);
     const offset = parseFiniteNumber(req.query['offset'], 0);
 
     if (playlistId === null || offset === null) {

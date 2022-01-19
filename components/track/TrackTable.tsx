@@ -10,7 +10,7 @@ export const TrackTable = (props: TrackTableProps) => {
             <TrackRow
                 index={index + 1}
                 selected={false}
-                key={`${track.type}-${track.id}`}
+                key={`${track.type}-${track.id}-${index}`}
                 onClick={() => onTrackRowClick(track)}
                 track={track}
             />
