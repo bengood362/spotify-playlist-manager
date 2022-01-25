@@ -217,6 +217,8 @@ export default async function handler(
             return post(req, res);
         } else if (req.method === 'PUT') {
             return put(req, res);
+        } else {
+            throw new Error('unsupported_method');
         }
     } catch (err) {
         console.error('[E]:/api/oauth2/spotify/playlists/[pid]/tracks', { err, method: req.method });

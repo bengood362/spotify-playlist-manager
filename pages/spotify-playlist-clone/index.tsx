@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
+import * as R from 'ramda';
 import qs from 'qs';
 import React, { useState, useCallback, useEffect } from 'react';
 import type { NextPage, NextPageContext } from 'next';
@@ -30,6 +31,7 @@ import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter
 import { PostPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/PostPlaylistResponse';
 import { SyncPlaylistConflictDialogContainer } from '../../components/dialog/SyncPlaylistConflictDialog/SyncPlaylistConflictDialogContainer';
 import { PostTrackBody, PostTrackResponse, PutTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
+import { GetPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistResponse';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,
@@ -170,12 +172,48 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     const handleSyncPlaylistError = useCallback((err: unknown) => {
         console.error('[E]/pages/spotify-playlist-clone:handleSyncPlaylistError', err);
     }, []);
-    const handleAppendPlaylistItemsSuccessful = useCallback((_response: PostTrackResponse) => {
+    const handleAppendPlaylistItemsSuccessful = useCallback(async (_response: PostTrackResponse) => {
         console.log('[I]/pages/spotify-playlist-clone:handleAppendPlaylistItemsSuccessful');
-    }, []);
-    const handleOverwritePlaylistItemsSuccessful = useCallback((_response: PutTrackResponse) => {
+
+        if (!selectedToPlaylist) {
+            return;
+        }
+
+        const getPlaylistResponse = await axios.get<GetPlaylistResponse>(`/api/spotify/playlists/${selectedToPlaylist.id}`);
+
+        if (getPlaylistResponse.status === 200) {
+            const index = R.indexOf(selectedToPlaylist, playlists);
+
+            if (index === -1) {
+                setPlaylists([...playlists, getPlaylistResponse.data])
+                setSelectedToPlaylist(getPlaylistResponse.data);
+            } else {
+                setPlaylists(R.set(R.lensIndex(index), getPlaylistResponse.data, playlists))
+                setSelectedToPlaylist(getPlaylistResponse.data);
+            }
+        }
+    }, [selectedToPlaylist, setSelectedToPlaylist, playlists, setPlaylists]);
+    const handleOverwritePlaylistItemsSuccessful = useCallback(async (_response: PutTrackResponse) => {
         console.log('[I]/pages/spotify-playlist-clone:handleOverwritePlaylistItemsSuccessful');
-    }, []);
+
+        if (!selectedToPlaylist) {
+            return;
+        }
+
+        const getPlaylistResponse = await axios.get<GetPlaylistResponse>(`/api/spotify/playlists/${selectedToPlaylist.id}`);
+
+        if (getPlaylistResponse.status === 200) {
+            const index = R.indexOf(selectedToPlaylist, playlists);
+
+            if (index === -1) {
+                setPlaylists([...playlists, getPlaylistResponse.data])
+                setSelectedToPlaylist(getPlaylistResponse.data);
+            } else {
+                setPlaylists(R.set(R.lensIndex(index), getPlaylistResponse.data, playlists))
+                setSelectedToPlaylist(getPlaylistResponse.data);
+            }
+        }
+    }, [selectedToPlaylist, setSelectedToPlaylist, playlists, setPlaylists]);
 
     const handleCreateNewPlaylistSuccess = useCallback((result: PostPlaylistResponse) => {
         console.log('[I]/pages/spotify-playlist-clone:handleCreateNewPlaylistSuccess', result);
