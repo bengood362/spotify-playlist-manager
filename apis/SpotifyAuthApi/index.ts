@@ -3,8 +3,6 @@ import { GetTokenParams } from './_types/token/GetTokenParams';
 import { IssueTokenByAuthCodeResponse } from './_types/token/IssueTokenByAuthCodeResponse';
 import { IssueTokenByRefreshTokenResponse } from './_types/token/IssueTokenByRefreshTokenResponse';
 
-const redirectUri = 'http://127.0.0.1:3000/api/oauth2/spotify/callback';
-
 export default class SpotifyAuthApi {
     private readonly apiHost = 'https://accounts.spotify.com';
     private readonly authorization: AxiosBasicCredentials;
@@ -44,6 +42,12 @@ export default class SpotifyAuthApi {
     }
 
     readonly getTokenByAuthCode = async (authCode: string): Promise<IssueTokenByAuthCodeResponse> => {
+        const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
+
+        if (!redirectUri) {
+            throw new Error('invalid_config');
+        }
+
         const apiUrl = `${this.apiHost}/api/token`;
         const params = new URLSearchParams();
 
