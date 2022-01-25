@@ -44,15 +44,16 @@ const batchGetPlaylistItemsResponses = (playlistId: string) => async (spotifyUse
 
 // TODO: spotify has bug for batch deleting playlist that has same items
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-const batchDeletePlaylistItems = (playlistId: string, uris: string[], chunkSize = 30) => async (spotifyUserApi: SpotifyUserApi): Promise<DeletePlaylistItemsResponse[]> => {
+const batchDeletePlaylistItems = (playlistId: string, uris: string[], firstSnapshotId: string, chunkSize = 100) => async (spotifyUserApi: SpotifyUserApi): Promise<DeletePlaylistItemsResponse[]> => {
     const urisBatches = chunk(uris, chunkSize);
 
     // TODO: rate limiting
     const responses = await Promise.reduce<string[], DeletePlaylistItemsResponse[]>(urisBatches, async (responses, uris) => {
         const lastResponse = responses.length > 0 ? responses[responses.length - 1] : null;
+        const snapshotId = lastResponse ? lastResponse.snapshot_id : firstSnapshotId;
         const response = await spotifyUserApi.deletePlaylistItems(playlistId, {
             tracks: uris.map((uri) => ({ uri })),
-            ...(lastResponse ? { snapshot_id: lastResponse.snapshot_id } : {}),
+            snapshot_id: snapshotId,
         });
 
         await Promise.delay(500);
@@ -127,7 +128,7 @@ async function put(
         }
     });
 
-    await batchDeletePlaylistItems(playlistId, trackUris)(spotifyUserApi);
+    await batchDeletePlaylistItems(playlistId, trackUris, snapshotId)(spotifyUserApi);
 
     const addItemsToPlaylistResponses = await addPlaylistItemsChunked(playlistId, uris, 0, 100)(spotifyUserApi);
 
