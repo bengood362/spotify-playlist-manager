@@ -17,6 +17,13 @@ export type Track = {
     name: string,
     popularity: number,
     preview_url: string,
+    linked_from?: {
+        external_urls: {spotify: string},
+        href: string,
+        id: string,
+        type: 'track',
+        uri: string,
+    },
     track: true,
     track_number: number,
     type: 'track',

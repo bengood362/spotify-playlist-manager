@@ -13,6 +13,8 @@ import { AddPlaylistItemsBody } from './_types/playlists/tracks/AddPlaylistItems
 import { AddPlaylistItemsResponse } from './_types/playlists/tracks/AddPlaylistItemsResponse';
 import { DeletePlaylistItemsBody } from './_types/playlists/tracks/DeletePlaylistItemsBody';
 import { DeletePlaylistItemsResponse } from './_types/playlists/tracks/DeletePlaylistItemsResponse';
+import { GetPlaylistParams } from './_types/playlists/GetPlaylistParams';
+import { GetPlaylistResponse } from './_types/playlists/GetPlaylistResponse';
 
 // TODO: forward axios http error
 // TODO: access token expiration - retry by apiClient
@@ -164,10 +166,10 @@ export default class SpotifyUserApi {
 
     readonly getPlaylist = this.invalidAccessTokenExceptionFilter(async (
         playlistId: string,
-    ): Promise<GetPlaylistsResponse> => {
+    ): Promise<GetPlaylistResponse> => {
         const apiUrl = `https://api.spotify.com/v1/playlists/${playlistId}`;
 
-        const response = await axios.get<GetPlaylistsParams, AxiosResponse<GetPlaylistsResponse>>(apiUrl, {
+        const response = await axios.get<GetPlaylistParams, AxiosResponse<GetPlaylistResponse>>(apiUrl, {
             headers: {
                 Authorization: `${this.tokenType} ${this.accessToken}`,
             },

@@ -1,11 +1,16 @@
 import { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
 import { TableCell, TableRow } from '@mui/material';
+import { useCallback } from 'react';
 
 export const PlaylistRow = (props: PlaylistRowProps) => {
     const { playlist, selected, onClick } = props;
 
+    const handleClick = useCallback(() => {
+        onClick(playlist);
+    }, [onClick, playlist]);
+
     return (
-        <TableRow hover={true} selected={selected} onClick={() => onClick(playlist)} key={`${playlist.type}-${playlist.id}`}>
+        <TableRow hover={true} selected={selected} onClick={handleClick} key={`${playlist.type}-${playlist.id}`}>
             <TableCell>
                 {playlist.owner.display_name}
             </TableCell>

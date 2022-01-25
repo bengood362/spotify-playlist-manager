@@ -47,7 +47,7 @@ export const SyncPlaylistConflictDialogContainer = (props: SyncPlaylistConflictD
 
     const handleOverwriteButtonClick = useCallback(async () => {
         try {
-            const response = await axios.put<PutTrackResponse, AxiosResponse<PutTrackResponse>, PutTrackBody>(`/api/spotify/playlists/${toPlaylist.id}/tracks`, { uris: fromUris }, {
+            const response = await axios.put<PutTrackResponse, AxiosResponse<PutTrackResponse>, PutTrackBody>(`/api/spotify/playlists/${toPlaylist.id}/tracks`, { uris: fromUris, snapshotId: toPlaylist.snapshot_id }, {
                 headers: { 'Content-Type': 'application/json' },
             });
 
