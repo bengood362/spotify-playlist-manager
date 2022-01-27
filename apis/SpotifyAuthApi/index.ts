@@ -1,7 +1,9 @@
 import axios, { AxiosResponse, AxiosBasicCredentials } from 'axios';
-import { GetTokenParams } from './_types/token/GetTokenParams';
-import { IssueTokenByAuthCodeResponse } from './_types/token/IssueTokenByAuthCodeResponse';
-import { IssueTokenByRefreshTokenResponse } from './_types/token/IssueTokenByRefreshTokenResponse';
+import {
+    GetTokenParams,
+    IssueTokenByAuthCodeResponse,
+    IssueTokenByRefreshTokenResponse,
+} from './_types/token';
 
 export default class SpotifyAuthApi {
     private readonly apiHost = 'https://accounts.spotify.com';

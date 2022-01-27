@@ -8,13 +8,9 @@ import Image from 'next/image';
 
 import SpotifyUserApi from '../../apis/SpotifyUserApi';
 import SpotifyAuthApi from '../../apis/SpotifyAuthApi';
-import type { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
-import type { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
-import type { GetPlaylistsResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistsResponse';
-import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
-import { PostPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/PostPlaylistResponse';
+import type { Track } from '../../apis/SpotifyUserApi/_types/tracks';
+import type { PostPlaylistResponse, GetPlaylistResponse, GetPlaylistsResponse, Playlist } from '../../apis/SpotifyUserApi/_types/playlists';
 import { PostTrackBody, PostTrackResponse, PutTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
-import { GetPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistResponse';
 
 import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 
@@ -22,20 +18,21 @@ import homeStyles from '../../styles/Home.module.css';
 import pageStyles from './index.module.css';
 
 import { Button, ToggleButtonGroup, ToggleButton } from '@mui/material';
-import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
 import { TrackTable } from '../../components/track/TrackTable';
 import { NewPlaylistDialogContainer } from '../../components/dialog/NewPlaylistDialog/NewPlaylistDialogContainer';
 import { SyncTableContainer } from '../../components/SyncTable/SyncTableContainer';
 import { SyncPlaylistConflictDialogContainer } from '../../components/dialog/SyncPlaylistConflictDialog/SyncPlaylistConflictDialogContainer';
+import { PlaylistTableTextHeader } from '../../components/playlist/PlaylistTableTextHeader';
+import { PlaylistDetailsContainer } from '../../components/PlaylistDetails/PlaylistDetailsContainer';
+import { StandardHorizontalDivider } from '../../components/HorizontalDivider/StandardHorizontalDivider';
 
 import { useFetchPlaylistItems } from '../../client/hooks/useFetchPlaylistItems';
 
 import { parseAuthorization } from '../../server/request/header/parseAuthorization';
+import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
 import { parseSessionId } from '../../server/request/header/parseSessionId';
-import { PlaylistTableTextHeader } from '../../components/playlist/PlaylistTableTextHeader';
-import { PlaylistDetailsContainer } from '../../components/PlaylistDetails/PlaylistDetailsContainer';
-import { StandardHorizontalDivider } from '../../components/HorizontalDivider/StandardHorizontalDivider';
+import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,

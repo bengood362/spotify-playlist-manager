@@ -1,20 +1,24 @@
-import R from 'ramda';
+import * as R from 'ramda';
 import axios, { AxiosResponse } from 'axios';
 import qs from 'qs';
-import { GetMeParams } from './_types/me/GetMeParams';
-import { GetMeResponse } from './_types/me/GetMeResponse';
-import { PostPlaylistBody } from './_types/playlists/PostPlaylistBody';
-import { PostPlaylistResponse } from './_types/playlists/PostPlaylistResponse';
-import { GetPlaylistsParams } from './_types/playlists/GetPlaylistsParams';
-import { GetPlaylistsResponse } from './_types/playlists/GetPlaylistsResponse';
-import { GetPlaylistTracksParams } from './_types/tracks/GetPlaylistTracksParams';
-import { GetPlaylistTracksResponse } from './_types/tracks/GetPlaylistTracksResponse';
-import { AddPlaylistItemsBody } from './_types/playlists/tracks/AddPlaylistItemsBody';
-import { AddPlaylistItemsResponse } from './_types/playlists/tracks/AddPlaylistItemsResponse';
-import { DeletePlaylistItemsBody } from './_types/playlists/tracks/DeletePlaylistItemsBody';
-import { DeletePlaylistItemsResponse } from './_types/playlists/tracks/DeletePlaylistItemsResponse';
-import { GetPlaylistParams } from './_types/playlists/GetPlaylistParams';
-import { GetPlaylistResponse } from './_types/playlists/GetPlaylistResponse';
+import { GetMeParams, GetMeResponse } from './_types/me';
+import {
+    PostPlaylistBody,
+    PostPlaylistResponse,
+    GetPlaylistsParams,
+    GetPlaylistsResponse,
+    GetPlaylistParams,
+    GetPlaylistResponse,
+} from './_types/playlists';
+
+import { GetPlaylistTracksParams, GetPlaylistTracksResponse } from './_types/tracks';
+
+import {
+    AddPlaylistItemsBody,
+    AddPlaylistItemsResponse,
+    DeletePlaylistItemsBody,
+    DeletePlaylistItemsResponse,
+} from './_types/playlists/tracks';
 
 // TODO: forward axios http error
 // TODO: access token expiration - retry by apiClient
