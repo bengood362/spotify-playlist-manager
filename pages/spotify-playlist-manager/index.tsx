@@ -86,7 +86,7 @@ const fetchPageWithRetry = (
         };
     } catch (err) {
         // TODO: retry-backoff
-        console.error('[E]/pages/spotify-playlist-clone:fetchPageWithRetry', err);
+        console.error('[E]/pages/spotify-playlist-manager:fetchPageWithRetry', err);
 
         if (err instanceof Error && err.message === 'access_token_expired') {
             const newAuthorization = await handleAccessTokenExpiredError(sessionId, authorization)(spotifyAuthApi, spotifyAuthorizationStore);
@@ -112,7 +112,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
         const cookieHeader = context.req?.headers.cookie;
 
         if (!cookieHeader) {
-            console.error('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
+            console.error('[E]:/spotify-playlist-manager:getServerSideProps:', 'no_cookie');
 
             throw new Error('not_logged_in');
         }
@@ -121,7 +121,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
         const authorization = await parseAuthorization(cookieHeader);
 
         if (!authorization || !sessionId) {
-            console.error('[E]/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
+            console.error('[E]/spotify-playlist-manager:getServerSideProps:', 'no_authorization');
 
             throw new Error('not_logged_in');
         }
@@ -132,9 +132,18 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
         return await fetchPageWithRetry(sessionId, authorization, 1, null)(spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi);
     } catch (err) {
         // TODO: redirect to authorize for not_logged_in
-        console.error('[E]/pages/spotify-playlist-clone:getServerSideProps', err);
+        console.error('[E]/pages/spotify-playlist-manager:getServerSideProps', err);
 
         if (err instanceof Error) {
+            if (err.message === 'not_logged_in') {
+                return {
+                    props: {
+                        error: err.message,
+                        redirectUri: '/spotify-playlist-manager/oauth2/authorize',
+                    },
+                };
+            }
+
             return {
                 props: {
                     error: err.message,
@@ -160,7 +169,6 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     const [fromTracks, fromTracksTotalCount, handleFromTracksNextPageButtonClick] = useFetchPlaylistItems(selectedFromPlaylist)
     const [toTracks, toTracksTotalCount, handleToTracksNextPageButtonClick] = useFetchPlaylistItems(selectedToPlaylist)
 
-
     useEffect(() => {
         if(isErrorProps(props)){
             return;
@@ -170,10 +178,10 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [setPlaylists]);
 
     const handleSyncPlaylistError = useCallback((err: unknown) => {
-        console.error('[E]/pages/spotify-playlist-clone:handleSyncPlaylistError', err);
+        console.error('[E]/pages/spotify-playlist-manager:handleSyncPlaylistError', err);
     }, []);
     const handleAppendPlaylistItemsSuccessful = useCallback(async (_response: PostTrackResponse) => {
-        console.log('[I]/pages/spotify-playlist-clone:handleAppendPlaylistItemsSuccessful');
+        console.log('[I]/pages/spotify-playlist-manager:handleAppendPlaylistItemsSuccessful');
 
         if (!selectedToPlaylist) {
             return;
@@ -194,7 +202,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
         }
     }, [selectedToPlaylist, setSelectedToPlaylist, playlists, setPlaylists]);
     const handleOverwritePlaylistItemsSuccessful = useCallback(async (_response: PutTrackResponse) => {
-        console.log('[I]/pages/spotify-playlist-clone:handleOverwritePlaylistItemsSuccessful');
+        console.log('[I]/pages/spotify-playlist-manager:handleOverwritePlaylistItemsSuccessful');
 
         if (!selectedToPlaylist) {
             return;
@@ -216,12 +224,12 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [selectedToPlaylist, setSelectedToPlaylist, playlists, setPlaylists]);
 
     const handleCreateNewPlaylistSuccess = useCallback((result: PostPlaylistResponse) => {
-        console.log('[I]/pages/spotify-playlist-clone:handleCreateNewPlaylistSuccess', result);
+        console.log('[I]/pages/spotify-playlist-manager:handleCreateNewPlaylistSuccess', result);
 
         setPlaylists([result, ...playlists]);
     }, [playlists, setPlaylists]);
     const handleCreateNewPlaylistError = useCallback((err: unknown) => {
-        console.error('[E]/pages/spotify-playlist-clone:handleCreateNewPlaylistError', err);
+        console.error('[E]/pages/spotify-playlist-manager:handleCreateNewPlaylistError', err);
     }, []);
     const handleDismissNewPlaylistDialog = useCallback(() => {
         setShouldShowNewPlaylistDialog(false);
@@ -231,7 +239,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [setShouldShowConflictResolutionDialog]);
 
     const handleFromPlaylistRowClick = useCallback(async (playlist: Playlist) => {
-        console.log('[I]/pages/spotify-playlist-clone:handleFromPlaylistRowClick', playlist)
+        console.log('[I]/pages/spotify-playlist-manager:handleFromPlaylistRowClick', playlist)
 
         if (playlist === selectedFromPlaylist) {
             setSelectedFromPlaylist(null);
@@ -241,7 +249,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [selectedFromPlaylist, setSelectedFromPlaylist]);
 
     const handleToPlaylistRowClick = useCallback(async (playlist: Playlist) => {
-        console.log('[I]/pages/spotify-playlist-clone:handleToPlaylistRowClick', playlist)
+        console.log('[I]/pages/spotify-playlist-manager:handleToPlaylistRowClick', playlist)
 
         if (playlist === selectedToPlaylist) {
             setSelectedToPlaylist(null);
@@ -251,17 +259,17 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [selectedToPlaylist, setSelectedToPlaylist]);
 
     const handleTrackRowClick = useCallback((track: Track) => {
-        console.log('[I]/pages/spotify-playlist-clone:handleTrackRowClick:track', track);
+        console.log('[I]/pages/spotify-playlist-manager:handleTrackRowClick:track', track);
     }, []);
 
     const handleNewPlaylistButtonClick = useCallback(() => {
-        console.log('[I]/pages/spotify-playlist-clone:handleNewPlaylistButtonClick');
+        console.log('[I]/pages/spotify-playlist-manager:handleNewPlaylistButtonClick');
 
         setShouldShowNewPlaylistDialog(true);
     }, [setShouldShowNewPlaylistDialog]);
 
     const handlePlaylistNextPageButtonClick = useCallback(async () => {
-        console.log('[I]/pages/spotify-playlist-clone:handlePlaylistNextPageButtonClick');
+        console.log('[I]/pages/spotify-playlist-manager:handlePlaylistNextPageButtonClick');
 
         const querystring = qs.stringify({
             offset: playlists.length,
@@ -275,7 +283,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [playlists, setPlaylists]);
 
     const handleSyncButtonClick = useCallback(async () => {
-        console.log('[I]/pages/spotify-playlist-clone:handleSyncButtonClick');
+        console.log('[I]/pages/spotify-playlist-manager:handleSyncButtonClick');
 
         if (selectedFromPlaylist === null || selectedToPlaylist === null) {
             return;
@@ -301,7 +309,13 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [selectedFromPlaylist, selectedToPlaylist, setShouldShowConflictResolutionDialog, fromTracks, toTracks]);
 
     if (isErrorProps(props)) {
-        return <pre>{props.error}</pre>;
+        if (props.redirectUri) {
+            location.href = props.redirectUri;
+        }
+
+        return (
+            <pre>{props.error}</pre>
+        );
     }
 
     const {
@@ -321,6 +335,9 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                 <h3>
                     Hello {spotifyUserId}
                 </h3>
+                <h4>
+                    Sync spotify playlist
+                </h4>
                 <div className={pageStyles.playlistSection}>
                     <div className={pageStyles.playlistTableSection}>
                         <div className={pageStyles.playlistContainer}>
@@ -348,7 +365,7 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                             <PlaylistTable
                                 selectedPlaylist={selectedToPlaylist}
                                 onPlaylistRowClick={handleToPlaylistRowClick}
-                                playlists={playlists}
+                                playlists={playlists.filter((playlist) => playlist.owner.id === spotifyUserId)}
                             />
                         </div>
                     </div>

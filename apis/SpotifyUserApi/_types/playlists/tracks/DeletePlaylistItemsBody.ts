@@ -6,8 +6,9 @@ export type DeletePlaylistItemsBody = {
     /**
      * @property {string[]} uris
      * An array of objects containing Spotify URIs of the tracks or episodes to remove. For example: { "tracks": [{ "uri": "spotify:track:4iV5W9uYEdYUVa79Axb7Rh" },{ "uri": "spotify:track:1301WleyT98MSxVHPZCA6M" }] }. A maximum of 100 objects can be sent at once.
+     * NOTE: positions is 0-based index, that is reverse-engineering from spotify web frontend: {uri: "spotify:track:0iFGdFbrDDJw5FBImSAEUy", positions: [2]}
      * */
-    tracks: Pick<Track, 'uri'>[],
+    tracks: (Pick<Track, 'uri'> & { positions?: number[] })[],
 
     /**
      * @property {string} [snapshot_id]
