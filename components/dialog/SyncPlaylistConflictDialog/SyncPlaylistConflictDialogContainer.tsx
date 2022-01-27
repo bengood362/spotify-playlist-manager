@@ -21,12 +21,15 @@ export const SyncPlaylistConflictDialogContainer = (props: SyncPlaylistConflictD
         onError,
     } = props;
 
-    const createAppendToPlaylistCallback = (
+    const useAppendToPlaylistCallback = (
         playlist: Playlist,
         uris: string[],
         position: number,
+        onSuccessAppend: (response: PostTrackResponse) => void,
+        onError: (error: unknown) => void,
+        dismissDialog: () => void,
     ) => {
-        return useCallback(async () => {
+        const callback = useCallback(async () => {
             try {
                 const response = await axios.post<PostTrackResponse, AxiosResponse<PostTrackResponse>, PostTrackBody>(`/api/spotify/playlists/${playlist.id}/tracks`, { uris, position }, {
                     headers: { 'Content-Type': 'application/json' },
@@ -43,6 +46,8 @@ export const SyncPlaylistConflictDialogContainer = (props: SyncPlaylistConflictD
                 dismissDialog();
             }
         }, [playlist, uris, position, onSuccessAppend, onError, dismissDialog]);
+
+        return callback;
     };
 
     const handleOverwriteButtonClick = useCallback(async () => {
@@ -63,8 +68,8 @@ export const SyncPlaylistConflictDialogContainer = (props: SyncPlaylistConflictD
         }
     }, [toPlaylist, fromUris, dismissDialog, onSuccessOverwrite, onError]);
 
-    const handleAppendFromBeginningButtonClick = createAppendToPlaylistCallback(toPlaylist, fromUris, 0);
-    const handleAppendToEndButtonClick =  createAppendToPlaylistCallback(toPlaylist, fromUris, toTrackTotalCount);
+    const handleAppendFromBeginningButtonClick = useAppendToPlaylistCallback(toPlaylist, fromUris, 0, onSuccessAppend, onError, dismissDialog);
+    const handleAppendToEndButtonClick = useAppendToPlaylistCallback(toPlaylist, fromUris, toTrackTotalCount, onSuccessAppend, onError, dismissDialog);
 
     const handleCancelButtonClick = useCallback(async () => {
         dismissDialog();

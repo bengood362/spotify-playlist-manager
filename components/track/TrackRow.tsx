@@ -8,7 +8,7 @@ export const TrackRow = (props: TrackRowProps) => {
 
     const handleClick = useCallback(() => {
         onClick(track);
-    }, [onClick]);
+    }, [onClick, track]);
 
     return (
         <TableRow selected={selected} onClick={handleClick} key={`${track.type}-${track.id}`}>

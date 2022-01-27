@@ -9,7 +9,7 @@ export const PlaylistRow = (props: PlaylistRowProps) => {
         if (!disabled) {
             onClick(playlist);
         }
-    }, [onClick, playlist]);
+    }, [onClick, playlist, disabled]);
 
     return (
         <TableRow
@@ -29,7 +29,7 @@ export const PlaylistRow = (props: PlaylistRowProps) => {
                     <Chip sx={{ marginLeft: 1, fontStyle: 'italic' }} size="small" label="private" />
                 )}
                 {playlist.collaborative ? (
-                    <Chip sx={{ marginLeft: 1, fontStyle: 'italic'  }} size="small" label="collaborative" />
+                    <Chip sx={{ marginLeft: 1, fontStyle: 'italic' }} size="small" label="collaborative" />
                 ) : null}
             </TableCell>
         </TableRow>

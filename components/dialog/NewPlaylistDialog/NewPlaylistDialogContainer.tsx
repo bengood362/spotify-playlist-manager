@@ -67,7 +67,7 @@ export const NewPlaylistDialogContainer = (props: NewPlaylistDialogContainerProp
         } finally {
             dismissDialog();
         }
-    }, [name, description, dismissDialog, isValidForm, onSuccess, onError]);
+    }, [name, description, dismissDialog, isValidForm, onSuccess, onError, createNewPlaylist]);
 
     const handleNameChange = useCallback((event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
         setIsNameDirty(true);
