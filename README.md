@@ -1,4 +1,4 @@
-# Spotify-playlist-clone
+# Spotify-playlist-manager
 Spotify doesn't provide any easy way to clone a private collaborated playlist. This nextjs app is to tackle the issue by synchronizing two playlist easily.
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).

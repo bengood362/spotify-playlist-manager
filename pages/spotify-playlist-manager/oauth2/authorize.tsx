@@ -10,7 +10,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
         // setup authorize url from config
         // Scopes reference: https://developer.spotify.com/documentation/general/guides/authorization/scopes/
         const clientId = process.env.SPOTIFY_CLIENT_ID;
-        const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public'].join(' ');
+        const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public', 'playlist-modify-private'].join(' ');
         const host = 'https://accounts.spotify.com';
         const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
@@ -24,7 +24,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
         const cookieHeader = context.req?.headers.cookie;
 
         if (!cookieHeader) {
-            console.error('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_cookie');
+            console.error('[E]:/spotify-playlist-manager:getServerSideProps:', 'no_cookie');
             // TODO: redirect to authorize
 
             return {
@@ -39,7 +39,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
         const authorization = await parseAuthorization(cookieHeader);
 
         if (!authorization) {
-            console.error('[E]:/spotify-playlist-clone:getServerSideProps:', 'no_authorization');
+            console.error('[E]:/spotify-playlist-manager:getServerSideProps:', 'no_authorization');
 
             return {
                 props: {
@@ -61,7 +61,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
             },
         };
     } catch (err) {
-        console.error('[E]/pages/spotify-playlist-clone/oauth2/authorize:getServerSideProps', err);
+        console.error('[E]/pages/spotify-playlist-manager/oauth2/authorize:getServerSideProps', err);
 
         return {
             props: {
@@ -75,7 +75,7 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
 
 const Home: NextPage<HomePageProps> = (props: HomePageProps) => {
     if (typeof window !== 'undefined' && props.spotifyUserId !== null) {
-        window.location.href = '/spotify-playlist-clone';
+        window.location.href = '/spotify-playlist-manager';
     }
 
     return (

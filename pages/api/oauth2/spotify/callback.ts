@@ -49,7 +49,7 @@ export default async function handler(
         ]);
 
         // NOTE: 302 doesnt allow to save cookie
-        const TARGET_PATH = '/spotify-playlist-clone';
+        const TARGET_PATH = '/spotify-playlist-manager';
         const responseText = `<html><head><meta http-equiv="refresh" content="2;url=${TARGET_PATH}" /></head></html>`;
 
         res.redirect(200, responseText);

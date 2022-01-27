@@ -1,11 +1,17 @@
-import { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
 import { TableCell, TableRow } from '@mui/material';
+import { useCallback } from 'react';
+
+import { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
 
 export const TrackRow = (props: TrackRowProps) => {
     const { index, track, selected, onClick } = props;
 
+    const handleClick = useCallback(() => {
+        onClick(track);
+    }, [onClick]);
+
     return (
-        <TableRow selected={selected} onClick={() => onClick(track)} key={`${track.type}-${track.id}`}>
+        <TableRow selected={selected} onClick={handleClick} key={`${track.type}-${track.id}`}>
             <TableCell>
                 {index}
             </TableCell>
