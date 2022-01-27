@@ -1,5 +1,6 @@
 # Spotify-playlist-manager
-Spotify doesn't provide any easy way to clone a private collaborated playlist. This nextjs app is to tackle the issue by synchronizing two playlist easily.
+Spotify doesn't provide any easy way to clone a private collaborative playlist. Collaborative means anyone with the link can edit, private means it is only accessible for someone - So you can hardly curate a public playlist with you friend.
+This nextjs app is to tackle the issue by synchronizing two playlist easily. Create a new playlist and clone your private collaborative playlist, and that's it!
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
