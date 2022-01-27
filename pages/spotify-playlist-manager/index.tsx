@@ -21,7 +21,7 @@ import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationS
 import homeStyles from '../../styles/Home.module.css';
 import pageStyles from './index.module.css';
 
-import { Button } from '@mui/material';
+import { Button, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
 import { TrackTable } from '../../components/track/TrackTable';
@@ -205,11 +205,8 @@ const Home: NextPage<SpotifyPlaylistManagerProps> = (props: SpotifyPlaylistManag
         setPlaylists(props.playlists);
     }, [setPlaylists, props]);
 
-    const handleSetDisplaySyncButtonClick = useCallback(() => {
-        setDisplayMode(PanelDisplayMode.SYNC);
-    }, [setDisplayMode]);
-    const handleSetDisplayPlaylistDetailsButtonClick = useCallback(() => {
-        setDisplayMode(PanelDisplayMode.PLAYLIST_DETAILS);
+    const handleSetDisplayMode = useCallback((_event, mode) => {
+        setDisplayMode(mode);
     }, [setDisplayMode]);
 
     const handleSyncPlaylistError = useCallback((err: unknown) => {
@@ -278,14 +275,15 @@ const Home: NextPage<SpotifyPlaylistManagerProps> = (props: SpotifyPlaylistManag
 
         if (playlist === selectedFromPlaylist) {
             setSelectedFromPlaylist(null);
+            setDisplayMode(PanelDisplayMode.NONE);
         } else {
             setSelectedFromPlaylist(playlist);
 
             if (displayMode === PanelDisplayMode.NONE) {
-                handleSetDisplayPlaylistDetailsButtonClick();
+                setDisplayMode(PanelDisplayMode.PLAYLIST_DETAILS);
             }
         }
-    }, [selectedFromPlaylist, setSelectedFromPlaylist, displayMode, handleSetDisplayPlaylistDetailsButtonClick]);
+    }, [selectedFromPlaylist, setSelectedFromPlaylist, displayMode, setDisplayMode]);
 
     const handleTrackRowClick = useCallback((track: Track) => {
         console.log('[I]/pages/spotify-playlist-manager:handleTrackRowClick:track', track);
@@ -372,12 +370,19 @@ const Home: NextPage<SpotifyPlaylistManagerProps> = (props: SpotifyPlaylistManag
                     Spotify playlist manager
                 </h4>
                 <div>
-                    <Button disabled={displayMode === PanelDisplayMode.SYNC || selectedFromPlaylist === null} onClick={handleSetDisplaySyncButtonClick}>
-                        Sync
-                    </Button>
-                    <Button disabled={displayMode === PanelDisplayMode.PLAYLIST_DETAILS || selectedFromPlaylist === null} onClick={handleSetDisplayPlaylistDetailsButtonClick}>
-                        Playlist Details
-                    </Button>
+                    <ToggleButtonGroup
+                        color="primary"
+                        value={displayMode}
+                        exclusive
+                        onChange={handleSetDisplayMode}
+                    >
+                        <ToggleButton disabled={selectedFromPlaylist === null} value={PanelDisplayMode.SYNC}>
+                            Sync
+                        </ToggleButton>
+                        <ToggleButton disabled={selectedFromPlaylist === null} value={PanelDisplayMode.PLAYLIST_DETAILS}>
+                            Playlist Details
+                        </ToggleButton>
+                    </ToggleButtonGroup>
                 </div>
                 <div className={pageStyles.playlistSection}>
                     <div className={pageStyles.playlistTableSection}>
