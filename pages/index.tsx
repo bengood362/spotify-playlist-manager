@@ -15,7 +15,7 @@ const Home: NextPage = () => {
 
             <main className={styles.main}>
                 <Link href="/spotify-playlist-manager">
-                    Clone/ Sync playlist
+                    Spotify playlist manager
                 </Link>
             </main>
 

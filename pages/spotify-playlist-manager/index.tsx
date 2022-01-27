@@ -11,6 +11,10 @@ import SpotifyAuthApi from '../../apis/SpotifyAuthApi';
 import type { Playlist } from '../../apis/SpotifyUserApi/_types/playlists/Playlist';
 import type { Track } from '../../apis/SpotifyUserApi/_types/tracks/Track';
 import type { GetPlaylistsResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistsResponse';
+import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
+import { PostPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/PostPlaylistResponse';
+import { PostTrackBody, PostTrackResponse, PutTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
+import { GetPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistResponse';
 
 import { ISpotifyAuthorizationStore, SpotifyAuthorization, spotifyAuthorizationStore } from '../../stores/SpotifyAuthorizationStore';
 
@@ -22,16 +26,16 @@ import { ErrorProps, isErrorProps } from '../../types/ErrorProps';
 import { PlaylistTable } from '../../components/playlist/PlaylistTable';
 import { TrackTable } from '../../components/track/TrackTable';
 import { NewPlaylistDialogContainer } from '../../components/dialog/NewPlaylistDialog/NewPlaylistDialogContainer';
+import { SyncTableContainer } from '../../components/SyncTable/SyncTableContainer';
+import { SyncPlaylistConflictDialogContainer } from '../../components/dialog/SyncPlaylistConflictDialog/SyncPlaylistConflictDialogContainer';
 
 import { useFetchPlaylistItems } from '../../client/hooks/useFetchPlaylistItems';
 
 import { parseAuthorization } from '../../server/request/header/parseAuthorization';
 import { parseSessionId } from '../../server/request/header/parseSessionId';
-import { fromIssueTokenByRefreshTokenResponse } from '../../server/model/adapter/spotifyAuthorization';
-import { PostPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/PostPlaylistResponse';
-import { SyncPlaylistConflictDialogContainer } from '../../components/dialog/SyncPlaylistConflictDialog/SyncPlaylistConflictDialogContainer';
-import { PostTrackBody, PostTrackResponse, PutTrackResponse } from '../api/spotify/playlists/[pid]/tracks';
-import { GetPlaylistResponse } from '../../apis/SpotifyUserApi/_types/playlists/GetPlaylistResponse';
+import { PlaylistTableTextHeader } from '../../components/playlist/PlaylistTableTextHeader';
+import { PlaylistDetailsContainer } from '../../components/PlaylistDetails/PlaylistDetailsContainer';
+import { StandardHorizontalDivider } from '../../components/HorizontalDivider/StandardHorizontalDivider';
 
 const handleAccessTokenExpiredError = (
     sessionId: string,
@@ -67,7 +71,7 @@ const fetchPageWithRetry = (
     spotifyAuthorizationStore: ISpotifyAuthorizationStore,
     spotifyAuthApi: SpotifyAuthApi,
     spotifyUserApi: SpotifyUserApi,
-): Promise<{ props: SpotifyPlaylistCloneProps }> => {
+): Promise<{ props: SpotifyPlaylistManagerProps }> => {
     if (retry < 0) {
         throw lastError;
     }
@@ -99,7 +103,7 @@ const fetchPageWithRetry = (
     }
 };
 
-export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistCloneProps }> {
+export async function getServerSideProps(context: NextPageContext): Promise<{ props: SpotifyPlaylistManagerProps }> {
     try {
         if (
             !process.env.SPOTIFY_CLIENT_ID ||
@@ -132,12 +136,20 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
         return await fetchPageWithRetry(sessionId, authorization, 1, null)(spotifyAuthorizationStore, spotifyAuthApi, spotifyUserApi);
     } catch (err) {
         // TODO: redirect to authorize for not_logged_in
+        const defaultProps = {
+            spotifyUserId: '',
+            playlistsTotalCount: -1,
+            playlists: [],
+        };
+
         console.error('[E]/pages/spotify-playlist-manager:getServerSideProps', err);
 
         if (err instanceof Error) {
             if (err.message === 'not_logged_in') {
                 return {
                     props: {
+                        ...defaultProps,
+
                         error: err.message,
                         redirectUri: '/spotify-playlist-manager/oauth2/authorize',
                     },
@@ -146,6 +158,8 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 
             return {
                 props: {
+                    ...defaultProps,
+
                     error: err.message,
                 },
             };
@@ -153,29 +167,50 @@ export async function getServerSideProps(context: NextPageContext): Promise<{ pr
 
         return {
             props: {
+                ...defaultProps,
+
                 error: 'internal',
             }, // will be passed to the page component as props
         };
     }
 }
 
-const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistCloneProps) => {
+enum PanelDisplayMode {
+    NONE,
+    SYNC,
+    PLAYLIST_DETAILS,
+}
+
+const Home: NextPage<SpotifyPlaylistManagerProps> = (props: SpotifyPlaylistManagerProps) => {
+    const {
+        spotifyUserId = '-1',
+        playlistsTotalCount = -1,
+    } = props;
+
     const [shouldShowNewPlaylistDialog, setShouldShowNewPlaylistDialog] = useState(false);
     const [shouldShowConflictResolutionDialog, setShouldShowConflictResolutionDialog] = useState(false);
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [displayMode, setDisplayMode] = useState<PanelDisplayMode>(PanelDisplayMode.NONE);
 
     const [selectedFromPlaylist, setSelectedFromPlaylist] = useState<Playlist | null>(null);
     const [selectedToPlaylist, setSelectedToPlaylist] = useState<Playlist | null>(null);
-    const [fromTracks, fromTracksTotalCount, handleFromTracksNextPageButtonClick] = useFetchPlaylistItems(selectedFromPlaylist)
-    const [toTracks, toTracksTotalCount, handleToTracksNextPageButtonClick] = useFetchPlaylistItems(selectedToPlaylist)
+    const [fromTracks, fromTracksTotalCount, handleFromTracksNextPageButtonClick] = useFetchPlaylistItems(selectedFromPlaylist);
+    const [toTracks, toTracksTotalCount, handleToTracksNextPageButtonClick] = useFetchPlaylistItems(selectedToPlaylist);
 
     useEffect(() => {
-        if(isErrorProps(props)){
+        if (isErrorProps(props)) {
             return;
         }
 
         setPlaylists(props.playlists);
-    }, [setPlaylists]);
+    }, [setPlaylists, props]);
+
+    const handleSetDisplaySyncButtonClick = useCallback(() => {
+        setDisplayMode(PanelDisplayMode.SYNC);
+    }, [setDisplayMode]);
+    const handleSetDisplayPlaylistDetailsButtonClick = useCallback(() => {
+        setDisplayMode(PanelDisplayMode.PLAYLIST_DETAILS);
+    }, [setDisplayMode]);
 
     const handleSyncPlaylistError = useCallback((err: unknown) => {
         console.error('[E]/pages/spotify-playlist-manager:handleSyncPlaylistError', err);
@@ -193,10 +228,10 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             const index = R.indexOf(selectedToPlaylist, playlists);
 
             if (index === -1) {
-                setPlaylists([...playlists, getPlaylistResponse.data])
+                setPlaylists([...playlists, getPlaylistResponse.data]);
                 setSelectedToPlaylist(getPlaylistResponse.data);
             } else {
-                setPlaylists(R.set(R.lensIndex(index), getPlaylistResponse.data, playlists))
+                setPlaylists(R.set(R.lensIndex(index), getPlaylistResponse.data, playlists));
                 setSelectedToPlaylist(getPlaylistResponse.data);
             }
         }
@@ -214,10 +249,10 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             const index = R.indexOf(selectedToPlaylist, playlists);
 
             if (index === -1) {
-                setPlaylists([...playlists, getPlaylistResponse.data])
+                setPlaylists([...playlists, getPlaylistResponse.data]);
                 setSelectedToPlaylist(getPlaylistResponse.data);
             } else {
-                setPlaylists(R.set(R.lensIndex(index), getPlaylistResponse.data, playlists))
+                setPlaylists(R.set(R.lensIndex(index), getPlaylistResponse.data, playlists));
                 setSelectedToPlaylist(getPlaylistResponse.data);
             }
         }
@@ -239,41 +274,29 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
     }, [setShouldShowConflictResolutionDialog]);
 
     const handleFromPlaylistRowClick = useCallback(async (playlist: Playlist) => {
-        console.log('[I]/pages/spotify-playlist-manager:handleFromPlaylistRowClick', playlist)
+        console.log('[I]/pages/spotify-playlist-manager:handleFromPlaylistRowClick', playlist);
 
         if (playlist === selectedFromPlaylist) {
             setSelectedFromPlaylist(null);
         } else {
             setSelectedFromPlaylist(playlist);
-        }
-    }, [selectedFromPlaylist, setSelectedFromPlaylist]);
 
-    const handleToPlaylistRowClick = useCallback(async (playlist: Playlist) => {
-        console.log('[I]/pages/spotify-playlist-manager:handleToPlaylistRowClick', playlist)
-
-        if (playlist === selectedToPlaylist) {
-            setSelectedToPlaylist(null);
-        } else {
-            setSelectedToPlaylist(playlist);
+            if (displayMode === PanelDisplayMode.NONE) {
+                handleSetDisplayPlaylistDetailsButtonClick();
+            }
         }
-    }, [selectedToPlaylist, setSelectedToPlaylist]);
+    }, [selectedFromPlaylist, setSelectedFromPlaylist, displayMode, handleSetDisplayPlaylistDetailsButtonClick]);
 
     const handleTrackRowClick = useCallback((track: Track) => {
         console.log('[I]/pages/spotify-playlist-manager:handleTrackRowClick:track', track);
     }, []);
-
-    const handleNewPlaylistButtonClick = useCallback(() => {
-        console.log('[I]/pages/spotify-playlist-manager:handleNewPlaylistButtonClick');
-
-        setShouldShowNewPlaylistDialog(true);
-    }, [setShouldShowNewPlaylistDialog]);
 
     const handlePlaylistNextPageButtonClick = useCallback(async () => {
         console.log('[I]/pages/spotify-playlist-manager:handlePlaylistNextPageButtonClick');
 
         const querystring = qs.stringify({
             offset: playlists.length,
-        })
+        });
 
         const getPlaylistsResponse = await axios.get<GetPlaylistsResponse>(`/api/spotify/playlists?${querystring}`);
 
@@ -297,16 +320,31 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
 
             const response = await axios.post<PostTrackResponse, AxiosResponse<PostTrackResponse>, PostTrackBody>(`/api/spotify/playlists/${selectedToPlaylist.id}/tracks`, { uris, position: 0 }, {
                 headers: { 'Content-Type': 'application/json' },
-            })
+            });
 
             if (response.status !== 201) {
                 throw response.data;
             }
 
-            return response.data;
-        }
+            const getPlaylistResponse = await axios.get<GetPlaylistResponse>(`/api/spotify/playlists/${selectedToPlaylist.id}`);
 
-    }, [selectedFromPlaylist, selectedToPlaylist, setShouldShowConflictResolutionDialog, fromTracks, toTracks]);
+            if (getPlaylistResponse.status === 200) {
+                const index = R.indexOf(selectedToPlaylist, playlists);
+
+                if (index === -1) {
+                    setPlaylists([...playlists, getPlaylistResponse.data]);
+                    setSelectedToPlaylist(getPlaylistResponse.data);
+                } else {
+                    setPlaylists(R.set(R.lensIndex(index), getPlaylistResponse.data, playlists));
+                    setSelectedToPlaylist(getPlaylistResponse.data);
+                }
+            }
+        }
+    }, [selectedFromPlaylist, selectedToPlaylist, setShouldShowConflictResolutionDialog, fromTracks, toTracks, setSelectedToPlaylist, setPlaylists, playlists]);
+
+    const handleSyncTablePlaylistSelected = useCallback((playlist: Playlist | null) => {
+        setSelectedToPlaylist(playlist);
+    }, [setSelectedToPlaylist]);
 
     if (isErrorProps(props)) {
         if (props.redirectUri) {
@@ -317,11 +355,6 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
             <pre>{props.error}</pre>
         );
     }
-
-    const {
-        spotifyUserId,
-        playlistsTotalCount,
-    } = props;
 
     return (
         <div className={homeStyles.container}>
@@ -336,14 +369,20 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                     Hello {spotifyUserId}
                 </h3>
                 <h4>
-                    Sync spotify playlist
+                    Spotify playlist manager
                 </h4>
+                <div>
+                    <Button disabled={displayMode === PanelDisplayMode.SYNC || selectedFromPlaylist === null} onClick={handleSetDisplaySyncButtonClick}>
+                        Sync
+                    </Button>
+                    <Button disabled={displayMode === PanelDisplayMode.PLAYLIST_DETAILS || selectedFromPlaylist === null} onClick={handleSetDisplayPlaylistDetailsButtonClick}>
+                        Playlist Details
+                    </Button>
+                </div>
                 <div className={pageStyles.playlistSection}>
                     <div className={pageStyles.playlistTableSection}>
-                        <div className={pageStyles.playlistContainer}>
-                            <h4>
-                                From playlist
-                            </h4>
+                        <div className={pageStyles.panelContainer}>
+                            <PlaylistTableTextHeader title="Playlists" onNewPlaylistButtonClick={null} />
                             <PlaylistTable
                                 selectedPlaylist={selectedFromPlaylist}
                                 onPlaylistRowClick={handleFromPlaylistRowClick}
@@ -353,27 +392,22 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
 
                         <div className={pageStyles.verticalDivider} />
 
-                        <div className={pageStyles.playlistContainer}>
-                            <div className={pageStyles.playlistTitleContainer}>
-                                <h4>
-                                    To playlist
-                                </h4>
-                                <Button size="small" sx={{ marginLeft: 'auto'}} onClick={handleNewPlaylistButtonClick}>
-                                    +
-                                </Button>
-                            </div>
-                            <PlaylistTable
-                                selectedPlaylist={selectedToPlaylist}
-                                onPlaylistRowClick={handleToPlaylistRowClick}
-                                playlists={playlists.filter((playlist) => playlist.owner.id === spotifyUserId)}
+                        <div className={pageStyles.panelContainer}>
+                            <RightPanelChildren
+                                displayMode={displayMode}
+                                playlists={playlists}
+                                selectedFromPlaylist={selectedFromPlaylist}
+                                spotifyUserId={spotifyUserId}
+
+                                handleSyncTablePlaylistSelected={handleSyncTablePlaylistSelected}
+                                handleCreateNewPlaylistSuccess={handleCreateNewPlaylistSuccess}
                             />
                         </div>
                     </div>
 
-
                     {playlists.length < playlistsTotalCount ? (
                         <React.Fragment>
-                            <div className={pageStyles.horizontalDivider} />
+                            <StandardHorizontalDivider />
 
                             <Button onClick={handlePlaylistNextPageButtonClick}>
                                 more playlists
@@ -382,49 +416,26 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
                     ) : null}
                 </div>
 
-                <div className={pageStyles.horizontalDivider} />
+                <StandardHorizontalDivider />
 
-                {/* TODO: merge two table to achieve same height */}
-                <div className={pageStyles.trackTableSection}>
-                    <div className={pageStyles.trackTableContainer}>
-                        <TrackTable
-                            tracks={selectedFromPlaylist === null ? [] : fromTracks}
-                            onTrackRowClick={handleTrackRowClick}
-                        />
-
-                        {selectedFromPlaylist !== null && fromTracks.length < fromTracksTotalCount ? (
-                            <React.Fragment>
-                                <div className={pageStyles.horizontalDivider} />
-
-                                <Button onClick={handleFromTracksNextPageButtonClick}>
-                                    more tracks
-                                </Button>
-                            </React.Fragment>
-                        ) : null}
-                    </div>
-
-                    <div className={pageStyles.verticalDivider} />
-
-                    <div className={pageStyles.trackTableContainer}>
-                        <TrackTable
-                            tracks={selectedToPlaylist === null ? [] : toTracks}
-                            onTrackRowClick={handleTrackRowClick}
-                        />
-
-                        {selectedToPlaylist !== null && toTracks.length < toTracksTotalCount ? (
-                            <React.Fragment>
-                                <div className={pageStyles.horizontalDivider} />
-
-                                <Button onClick={handleToTracksNextPageButtonClick}>
-                                    more tracks
-                                </Button>
-                            </React.Fragment>
-                        ) : null}
-                    </div>
+                <div className={pageStyles.bottomContainer}>
+                    <BottomPanelChildren
+                        displayMode={displayMode}
+                        selectedFromPlaylist={selectedFromPlaylist}
+                        selectedToPlaylist={selectedToPlaylist}
+                        fromTracks={fromTracks}
+                        toTracks={toTracks}
+                        fromTracksTotalCount={fromTracksTotalCount}
+                        toTracksTotalCount={toTracksTotalCount}
+                        handleFromTracksNextPageButtonClick={handleFromTracksNextPageButtonClick}
+                        handleToTracksNextPageButtonClick={handleToTracksNextPageButtonClick}
+                        handleTrackRowClick={handleTrackRowClick}
+                    />
                 </div>
 
                 <div className={pageStyles.actionButtonSection}>
                     <Button
+                        sx={{ marginTop: 2 }}
                         disabled={selectedFromPlaylist === null || selectedToPlaylist === null}
                         variant="contained"
                         size="medium"
@@ -477,8 +488,149 @@ const Home: NextPage<SpotifyPlaylistCloneProps> = (props: SpotifyPlaylistClonePr
 
 export default Home;
 
-type SpotifyPlaylistCloneProps = ErrorProps | {
+type SpotifyPlaylistManagerProps = Partial<ErrorProps> & {
     spotifyUserId: string;
     playlists: Playlist[];
     playlistsTotalCount: number,
 }
+
+type RightPanelChildrenProps = {
+    displayMode: PanelDisplayMode,
+    playlists: Playlist[],
+    selectedFromPlaylist: Playlist | null,
+    spotifyUserId: string,
+
+    handleSyncTablePlaylistSelected: (playlist: Playlist | null) => void;
+    handleCreateNewPlaylistSuccess: (playlist: Playlist) => void;
+
+}
+
+const RightPanelChildren = (props: RightPanelChildrenProps) => {
+    const { displayMode, playlists, selectedFromPlaylist, spotifyUserId, handleSyncTablePlaylistSelected, handleCreateNewPlaylistSuccess } = props;
+
+    switch (displayMode) {
+        case PanelDisplayMode.NONE: {
+            return (null);
+        }
+
+        case PanelDisplayMode.SYNC: {
+            return (
+                <SyncTableContainer
+                    playlists={playlists.filter((playlist) => playlist.owner.id === spotifyUserId)}
+                    onPlaylistSelected={handleSyncTablePlaylistSelected}
+                    onCreateNewPlaylistSuccess={handleCreateNewPlaylistSuccess}
+                />
+            );
+        }
+
+        case PanelDisplayMode.PLAYLIST_DETAILS: {
+            if (!selectedFromPlaylist) {
+                return (null);
+            }
+
+            return (
+                <PlaylistDetailsContainer playlist={selectedFromPlaylist} />
+            );
+        }
+
+        default: {
+            return (null);
+        }
+    }
+};
+
+type BottomPanelChildrenProps = {
+    displayMode: PanelDisplayMode,
+    selectedFromPlaylist: Playlist | null,
+    selectedToPlaylist: Playlist | null,
+    fromTracks: Track[],
+    toTracks: Track[],
+    fromTracksTotalCount: number,
+    toTracksTotalCount: number,
+
+    handleFromTracksNextPageButtonClick: () => void,
+    handleToTracksNextPageButtonClick: () => void,
+    handleTrackRowClick: (track: Track) => void,
+}
+
+const BottomPanelChildren = (props: BottomPanelChildrenProps) => {
+    const {
+        displayMode,
+        selectedFromPlaylist,
+        selectedToPlaylist,
+        fromTracks,
+        toTracks,
+        fromTracksTotalCount,
+        toTracksTotalCount,
+
+        handleFromTracksNextPageButtonClick,
+        handleToTracksNextPageButtonClick,
+        handleTrackRowClick,
+    } = props;
+
+    if (displayMode !== PanelDisplayMode.SYNC) {
+        return null;
+    }
+
+    return (
+        <div className={pageStyles.trackTableSection}>
+            <div className={pageStyles.trackTableContainer}>
+                {selectedFromPlaylist ? (
+                    <>
+                        <h4>
+                            Playlist: {selectedFromPlaylist.name}
+                        </h4>
+                        {fromTracks.length > 0 ? (
+                            <TrackTable
+                                tracks={fromTracks}
+                                onTrackRowClick={handleTrackRowClick}
+                            />
+                        ) : (
+                            <p>no songs</p>
+                        )}
+
+                        {fromTracks.length < fromTracksTotalCount ? (
+                            <React.Fragment>
+                                <StandardHorizontalDivider />
+
+                                <Button onClick={handleFromTracksNextPageButtonClick}>
+                                    more tracks
+                                </Button>
+                            </React.Fragment>
+                        ) : null}
+                    </>
+                ) : null}
+            </div>
+
+            <div className={pageStyles.verticalDivider} />
+
+            <div className={pageStyles.trackTableContainer}>
+                {selectedToPlaylist ? (
+                    <>
+                        <h4>
+                        Playlist: {selectedToPlaylist.name}
+                        </h4>
+                        {toTracks.length > 0 ? (
+                            <TrackTable
+                                tracks={toTracks}
+                                onTrackRowClick={handleTrackRowClick}
+                            />
+                        ) : (
+                            <p>No songs</p>
+                        )}
+
+                        {toTracks.length < toTracksTotalCount ? (
+                            <React.Fragment>
+                                <StandardHorizontalDivider />
+
+                                <Button onClick={handleToTracksNextPageButtonClick}>
+                                    more tracks
+                                </Button>
+                            </React.Fragment>
+                        ) : null}
+                    </>
+                ) : null}
+            </div>
+        </div>
+    );
+};
