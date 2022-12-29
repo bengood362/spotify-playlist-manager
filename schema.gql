@@ -1,0 +1,34 @@
+# indiecast schema
+type Artist {
+    id: ID!
+    photos: [String!]!
+    name: String!
+}
+type Release {
+    coverImage: String!
+}
+type AudioFile {
+    url: String!
+    bitrate: String!
+}
+type Track {
+    id: ID!
+    name: String!
+    artist: Artist!
+    lyrics: String!
+    originalUrl: String!
+    compressedUrls: [AudioFile!]
+    releases: [Release]!
+}
+
+type SearchResponse {
+    tracks: [Track!]
+    artists: [Artist!]
+    releases: [Release!]
+}
+type SearchQueryInput {
+    query: String!
+}
+type Query {
+    search(offset: Int!, limit: Int!, input: SearchQueryInput!): SearchResponse
+}

@@ -17,6 +17,9 @@ const Home: NextPage = () => {
                 <Link href="/spotify-playlist-manager">
                     Spotify playlist manager
                 </Link>
+                <Link href="/webplayer">
+                    Webplayer
+                </Link>
             </main>
 
             <footer className={styles.footer}>

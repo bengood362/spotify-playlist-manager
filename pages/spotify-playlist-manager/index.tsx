@@ -296,9 +296,9 @@ const Home: NextPage<SpotifyPlaylistManagerProps> = (props: SpotifyPlaylistManag
         const getPlaylistsResponse = await axios.get<GetPlaylistsResponse>(`/api/spotify/playlists?${querystring}`);
 
         if (getPlaylistsResponse.status === 200) {
-            setPlaylists([...playlists, ...getPlaylistsResponse.data.items]);
+            setPlaylists((prevPlaylists) => ([...prevPlaylists, ...getPlaylistsResponse.data.items]));
         }
-    }, [playlists, setPlaylists]);
+    }, [setPlaylists]);
 
     const handleSyncButtonClick = useCallback(async () => {
         console.log('[I]/pages/spotify-playlist-manager:handleSyncButtonClick');
@@ -342,7 +342,7 @@ const Home: NextPage<SpotifyPlaylistManagerProps> = (props: SpotifyPlaylistManag
     }, [setSelectedToPlaylist]);
 
     if (isErrorProps(props)) {
-        if (props.redirectUri) {
+        if (props.redirectUri && typeof global.window?.location !== 'undefined') {
             location.href = props.redirectUri;
         }
 

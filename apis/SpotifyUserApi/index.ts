@@ -19,6 +19,7 @@ import {
     DeletePlaylistItemsBody,
     DeletePlaylistItemsResponse,
 } from './_types/playlists/tracks';
+import { GetUserQueueResponse } from './_types/queue';
 
 // TODO: forward axios http error
 // TODO: access token expiration - retry by apiClient
@@ -212,6 +213,24 @@ export default class SpotifyUserApi {
             console.error('[E]SpotifyUserApi:getPlaylistItems', response.data);
 
             throw new Error('failed_to_fetch_playlist_items');
+        }
+
+        return response.data;
+    })
+
+    readonly getUserQueue = this.invalidAccessTokenExceptionFilter(async (): Promise<GetUserQueueResponse> => {
+        const apiUrl = 'https://api.spotify.com/v1/me/player/queue';
+
+        const response = await axios.get<Record<string, never>, AxiosResponse<GetUserQueueResponse>>(apiUrl, {
+            headers: {
+                Authorization: `${this.tokenType} ${this.accessToken}`,
+            },
+        });
+
+        if (response.status !== 200) {
+            console.error('[E]SpotifyUserApi:getUserQueue', response.data);
+
+            throw new Error('failed_to_fetch_user_queue');
         }
 
         return response.data;

@@ -10,15 +10,19 @@ export async function getServerSideProps(context: NextPageContext): Promise<GetS
         // setup authorize url from config
         // Scopes reference: https://developer.spotify.com/documentation/general/guides/authorization/scopes/
         const clientId = process.env.SPOTIFY_CLIENT_ID;
-        const scopes = ['playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public', 'playlist-modify-private'].join(' ');
+        const scopes = ['user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing', 'playlist-read-private', 'playlist-read-collaborative', 'playlist-modify-public', 'playlist-modify-private'].join(' ');
         const host = 'https://accounts.spotify.com';
         const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
+
+        console.log('context.query', context.query);
+
+        const query = JSON.stringify(Object.fromEntries(new URLSearchParams(context.query as any).entries()));
 
         if (!redirectUri) {
             throw new Error('invalid_config');
         }
 
-        const authorizeUrl = `${host}/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+        const authorizeUrl = `${host}/authorize?response_type=code&client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${query}`;
 
         // fetch user
         const cookieHeader = context.req?.headers.cookie;

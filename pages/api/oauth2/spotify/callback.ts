@@ -1,3 +1,4 @@
+import * as R from 'ramda';
 import { serialize } from 'cookie';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { spotifyAuthorizationStore } from '../../../../stores/SpotifyAuthorizationStore';
@@ -12,6 +13,10 @@ type Data = {
 type ErrorResponse = {
     message: string,
 }
+
+const filterStringArrayValues = (dict: Record<string, string | string[]>): Record<string, string> => {
+    return R.reject((v: string | string[]): v is string => Array.isArray(v), dict) as any;
+};
 
 export default async function handler(
     req: NextApiRequest,
@@ -33,6 +38,8 @@ export default async function handler(
 
         const code = req.query['code'];
 
+        const queryState = JSON.parse(Object.fromEntries(new URLSearchParams(filterStringArrayValues(req.query)).entries())['state'] ?? '{"prev":null}');
+
         if (typeof code !== 'string') {
             throw new Error('bad_request');
         }
@@ -49,7 +56,7 @@ export default async function handler(
         ]);
 
         // NOTE: 302 doesnt allow to save cookie
-        const TARGET_PATH = '/spotify-playlist-manager';
+        const TARGET_PATH = `/${queryState['prev']}` ?? '/spotify-playlist-manager';
         const responseText = `<html><head><meta http-equiv="refresh" content="2;url=${TARGET_PATH}" /></head></html>`;
 
         res.redirect(200, responseText);
